@@ -1,0 +1,2548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doble Ciudadanía — Generador de Formularios</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --mx-green: #006847;
+  --mx-red:   #CE1126;
+  --us-blue:  #002868;
+  --gold:     #C8960C;
+  --bg:       #F4F1EA;
+  --surface:  #FFFFFF;
+  --surface2: #F9F7F3;
+  --border:   #DDD8CC;
+  --text:     #1A1714;
+  --muted:    #6B6560;
+  --success:  #1A6B3C;
+  --danger:   #C41E1E;
+  --warn:     #B85C00;
+  --font-serif: 'Libre Baskerville', Georgia, serif;
+  --font-sans:  'DM Sans', system-ui, sans-serif;
+  --radius: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── HEADER ──────────────────────────────────────────────────── */
+.app-header {
+  background: var(--us-blue);
+  color: #fff;
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.flag { display: flex; gap: 2px; flex-shrink: 0; }
+.flag-stripe { width: 4px; height: 32px; border-radius: 2px; }
+.s-green { background: var(--mx-green); }
+.s-white { background: #ffffff; }
+.s-red   { background: var(--mx-red); }
+.s-blue  { background: #4a7dd4; }
+.header-title {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.header-sub { font-size: 11px; opacity: 0.7; margin-top: 1px; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.step-indicator { display: flex; gap: 6px; align-items: center; }
+.step-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  border: 2px solid rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.step-dot.active { border-color: #fff; color: #fff; background: rgba(255,255,255,0.15); }
+.step-dot.done   { border-color: #5cb85c; color: #5cb85c; background: rgba(92,184,92,0.1); }
+.step-line-h { width: 20px; height: 1px; background: rgba(255,255,255,0.2); }
+
+/* ── LAYOUT ──────────────────────────────────────────────────── */
+.app-body {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+/* ── STEPS ────────────────────────────────────────────────────── */
+.step-page { display: none; }
+.step-page.active { display: block; animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+/* ── SECTION CARD ────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.card-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface2);
+}
+.card-header-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.card-header-icon.green { background: rgba(0,104,71,0.1); }
+.card-header-icon.blue  { background: rgba(0,40,104,0.1); }
+.card-header-icon.red   { background: rgba(206,17,38,0.1); }
+.card-header-icon.gold  { background: rgba(200,150,12,0.1); }
+.card-title { font-family: var(--font-serif); font-size: 14px; font-weight: 700; color: var(--text); }
+.card-subtitle { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.card-body { padding: 20px; }
+
+/* ── FORM GRID ────────────────────────────────────────────────── */
+.form-grid { display: grid; gap: 14px; }
+.col-2 { grid-template-columns: 1fr 1fr; }
+.col-3 { grid-template-columns: 1fr 1fr 1fr; }
+.col-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.col-1-2 { grid-template-columns: 1fr 2fr; }
+.col-2-1 { grid-template-columns: 2fr 1fr; }
+.col-1-1-2 { grid-template-columns: 1fr 1fr 2fr; }
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
+.span-4 { grid-column: span 4; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.field label .req { color: var(--mx-red); margin-left: 2px; }
+.field input,
+.field select,
+.field textarea {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  color: var(--text);
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--us-blue);
+  box-shadow: 0 0 0 3px rgba(0,40,104,0.08);
+}
+.field input.error { border-color: var(--danger); }
+.field .err-msg { font-size: 11px; color: var(--danger); display: none; }
+.field.has-error .err-msg { display: block; }
+.field.has-error input,
+.field.has-error select { border-color: var(--danger); }
+
+/* ── RADIO / CHECKBOX GROUPS ─────────────────────────────────── */
+.radio-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 6px 0; }
+.radio-option {
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s;
+  user-select: none;
+}
+.radio-option input { display: none; }
+.radio-option:has(input:checked) { background: var(--us-blue); border-color: var(--us-blue); color: #fff; }
+.radio-option:hover { border-color: var(--us-blue); }
+
+/* ── CHILD TABS ───────────────────────────────────────────────── */
+.child-tabs {
+  display: flex; gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.child-tab {
+  padding: 10px 18px;
+  font-size: 12px; font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
+  background: none; border-top: none; border-left: none; border-right: none;
+}
+.child-tab.active { color: var(--us-blue); border-bottom-color: var(--us-blue); }
+.child-tab .tab-badge {
+  background: var(--us-blue); color: #fff;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+}
+.add-child-btn {
+  padding: 8px 14px; font-size: 12px; color: var(--mx-green); font-weight: 600;
+  cursor: pointer; background: none; border: none;
+  display: flex; align-items: center; gap: 4px;
+  margin-left: auto; flex-shrink: 0;
+}
+.child-panel { display: none; }
+.child-panel.active { display: block; }
+
+/* ── VIVO/FINADO TOGGLE ──────────────────────────────────────── */
+.vf-toggle { display: flex; gap: 6px; }
+.vf-btn {
+  flex: 1; padding: 7px; border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 11px; font-weight: 600;
+  cursor: pointer; background: #fff; transition: all 0.15s; text-align: center;
+}
+.vf-btn.vivo.active  { background: #f0fdf4; border-color: #86efac; color: var(--success); }
+.vf-btn.finado.active { background: #fef2f2; border-color: #fca5a5; color: var(--danger); }
+
+/* ── ADDRESS OVERRIDE SECTION ────────────────────────────────── */
+.addr-section {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+}
+.addr-section-title {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.8px;
+  text-transform: uppercase; color: var(--success); margin-bottom: 10px;
+}
+.addr-same-label {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; font-size: 12px; color: var(--success); font-weight: 500;
+  margin-bottom: 6px;
+}
+.addr-override-fields {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+}
+.addr-override-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
+  text-transform: uppercase; color: var(--success); margin-bottom: 8px;
+}
+.addr-sep { border-top: 1px solid #bbf7d0; margin: 10px 0; }
+
+/* ── VALIDATION BANNER ───────────────────────────────────────── */
+.validation-banner {
+  border-radius: var(--radius); padding: 14px 18px;
+  margin-bottom: 16px; display: none; gap: 12px; align-items: flex-start;
+}
+.validation-banner.show { display: flex; }
+.validation-banner.error { background: #fef2f2; border: 1px solid #fca5a5; }
+.validation-banner.success { background: #f0fdf4; border: 1px solid #86efac; }
+.banner-icon { font-size: 18px; flex-shrink: 0; }
+.banner-content h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.banner-content.error h4 { color: var(--danger); }
+.banner-content.success h4 { color: var(--success); }
+.banner-list { font-size: 12px; color: var(--muted); list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.banner-list li::before { content: '→ '; color: var(--danger); }
+
+/* ── EDIT MODE BANNER ────────────────────────────────────────── */
+.edit-mode-banner {
+  display: none;
+  background: #fef9f0;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  gap: 12px;
+  align-items: flex-start;
+}
+.edit-mode-banner.show { display: flex; }
+
+/* ── SYSTEM BANNERS ──────────────────────────────────────────── */
+.loading-banner {
+  display: none;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #1e40af;
+  align-items: center;
+  gap: 10px;
+}
+.loading-banner.show { display: flex; }
+.warning-7-children {
+  display: none;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: #92400e;
+}
+.warning-7-children.show { display: block; }
+
+/* ── BUTTONS ──────────────────────────────────────────────────── */
+.btn-row {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding-top: 8px; margin-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.btn {
+  padding: 10px 22px; border-radius: var(--radius);
+  font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--us-blue); color: #fff; }
+.btn-primary:hover { background: #003799; }
+.btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--surface2); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #155e32; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── REVIEW TABLE ────────────────────────────────────────────── */
+.review-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.review-table th {
+  text-align: left; padding: 7px 10px;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+  color: var(--muted); font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.review-table td { padding: 7px 10px; border-bottom: 1px solid rgba(0,0,0,0.04); vertical-align: top; }
+.review-table tr:last-child td { border-bottom: none; }
+.review-table .field-name { color: var(--muted); width: 35%; }
+.review-table .field-val  { font-weight: 500; color: var(--text); }
+.review-table .missing { color: var(--danger); font-style: italic; }
+
+/* ── PROGRESS BAR ─────────────────────────────────────────────── */
+.progress-bar-wrap { background: var(--border); border-radius: 100px; height: 4px; margin: 4px 0 16px; }
+.progress-bar { height: 4px; border-radius: 100px; background: var(--mx-green); transition: width 0.4s ease; }
+
+/* ── RESULT SCREEN ───────────────────────────────────────────── */
+.result-screen {
+  text-align: center;
+  padding: 60px 24px;
+}
+.result-icon { font-size: 64px; margin-bottom: 16px; }
+.result-title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+.result-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+.result-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; max-width: 680px; margin: 0 auto 32px; }
+.result-card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; background: var(--surface); box-shadow: var(--shadow);
+  text-align: left;
+}
+.result-card .rc-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 4px; }
+.result-card .rc-value { font-size: 15px; font-weight: 700; color: var(--text); }
+
+/* ── DOWNLOAD GRID ───────────────────────────────────────────── */
+.download-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; max-width: 600px; margin: 0 auto 32px; }
+.download-card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px; background: var(--surface); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.download-card .dc-icon { font-size: 32px; }
+.download-card .dc-name { font-weight: 700; font-size: 13px; }
+.download-card .dc-sub { font-size: 11px; color: var(--muted); }
+.download-card .dc-btn {
+  margin-top: 8px; background: var(--us-blue); color: #fff;
+  border: none; border-radius: var(--radius);
+  padding: 7px 16px; font-size: 12px; font-weight: 600;
+  cursor: pointer; width: 100%;
+}
+.download-card .dc-btn:hover { background: #003799; }
+
+/* ── PAGE TITLE ──────────────────────────────────────────────── */
+.page-title { font-family: var(--font-serif); font-size: 22px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.page-subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+/* ── SECTION DIVIDER ─────────────────────────────────────────── */
+.section-divider {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  padding: 12px 0 8px; display: flex; align-items: center; gap: 10px;
+  grid-column: 1 / -1;
+}
+.section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .col-2, .col-3, .col-4, .col-1-2, .col-2-1, .col-1-1-2 { grid-template-columns: 1fr; }
+  .span-2, .span-3, .span-4 { grid-column: span 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="flag">
+      <div class="flag-stripe s-green"></div>
+      <div class="flag-stripe s-white"></div>
+      <div class="flag-stripe s-red"></div>
+      <div style="width:6px"></div>
+      <div class="flag-stripe s-blue"></div>
+      <div class="flag-stripe s-white"></div>
+      <div class="flag-stripe s-red"></div>
+    </div>
+    <div>
+      <div class="header-title">Doble Ciudadanía — Generador de Formularios</div>
+      <div class="header-sub" id="headerSub">Consulado de México en Albuquerque · Uso interno</div>
+    </div>
+    <div class="header-right">
+      <div class="step-indicator" id="stepIndicator">
+        <div class="step-dot active" data-step="1" onclick="goToStep(1)">1</div>
+        <div class="step-line-h"></div>
+        <div class="step-dot" data-step="2" onclick="goToStep(2)">2</div>
+        <div class="step-line-h"></div>
+        <div class="step-dot" data-step="3" onclick="goToStep(3)">3</div>
+        <div class="step-line-h"></div>
+        <div class="step-dot" data-step="4" onclick="goToStep(4)">4</div>
+      </div>
+    </div>
+  </div>
+  <div class="progress-bar-wrap" style="margin:0; border-radius:0; height:3px;">
+    <div class="progress-bar" id="progressBar" style="width:25%"></div>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- EDIT MODE BANNER (shown when ?case=ID&edit=true) -->
+  <div class="edit-mode-banner" id="editModeBanner">
+    <div style="font-size:18px; flex-shrink:0;">⚠️</div>
+    <div>
+      <div style="font-size:13px; font-weight:700; color:#92400e; margin-bottom:3px;">Caso requiere corrección — Nota del POC:</div>
+      <div id="pocNotesText" style="font-size:12px; color:#92400e; line-height:1.6;"></div>
+      <div style="font-size:11px; color:#a16207; margin-top:4px;" id="editCaseIdLabel"></div>
+    </div>
+  </div>
+
+  <!-- LOADING BANNER -->
+  <div class="loading-banner" id="loadingBanner">
+    <div style="font-size:16px; flex-shrink:0;">⏳</div>
+    <div id="loadingText">Cargando caso...</div>
+  </div>
+
+  <!-- 7+ CHILDREN WARNING -->
+  <div class="warning-7-children" id="warning7Children">
+    <strong>⚠ Sesión grande — 7 o más hijos registrados.</strong>
+    Considere dividir en dos entregas separadas (Lote 1: hijos 1–6, Lote 2: hijos 7+).
+    Puede continuar sin problema — esta es solo una advertencia.
+  </div>
+
+  <!-- ══ STEP 1: CHILDREN ══════════════════════════════════════ -->
+  <div class="step-page active" id="page1">
+    <div class="page-title">Datos del Menor a Registrar</div>
+    <div class="page-subtitle">Complete los datos del menor a registrar. Puede agregar más de un hijo.</div>
+
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:4px;">
+      <div class="child-tabs" id="childTabs" style="flex:1; margin-bottom:0; border-bottom:none;"></div>
+      <button class="add-child-btn" onclick="addChild()">＋ Agregar Hijo</button>
+    </div>
+    <div style="border-bottom:2px solid var(--border); margin-bottom:20px;"></div>
+
+    <div id="childPanels"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goToStep(2)">Continuar → Datos de la Familia ›</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 2: FAMILY DATA ══════════════════════════════════ -->
+  <div class="step-page" id="page2">
+    <div class="page-title">Datos de la Familia</div>
+    <div class="page-subtitle">Datos compartidos para todos los hijos de esta sesión.</div>
+
+    <!-- NO FATHER FAMILY TOGGLE -->
+    <div style="margin-bottom:16px; padding:14px 18px; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px;">
+      <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:13px; font-weight:600; color:#92400e;">
+        <input type="checkbox" id="no_father_family"
+               onchange="toggleNoFatherFamily()"
+               style="width:16px; height:16px; cursor:pointer;">
+        🚫 ¿Ningún padre registrado para esta familia?
+      </label>
+      <div style="font-size:11px; color:#6b7280; margin-top:4px; margin-left:26px;">
+        Marque esta casilla si ningún hijo de esta sesión tiene padre registrado.
+        Se ocultarán los campos del padre y abuelos paternos, y quedarán en blanco en los formularios.
+      </div>
+    </div>
+
+    <!-- FATHER -->
+    <div id="father-card">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon blue">👨</div>
+        <div>
+          <div class="card-title">Datos del Padre</div>
+          <div class="card-subtitle">Nombre completo tal como aparece en su acta de nacimiento · Sin abreviaturas</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid col-3">
+          <div class="field">
+            <label>Primer Nombre(s)<span class="req">*</span></label>
+            <input type="text" id="f_first" placeholder="JUAN CARLOS" oninput="this.value=this.value.toUpperCase()" required>
+            <span class="err-msg">Campo requerido</span>
+          </div>
+          <div class="field">
+            <label>Segundo Nombre (Middle)</label>
+            <input type="text" id="f_middle" placeholder="ANTONIO (opcional)" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Paterno<span class="req">*</span></label>
+            <input type="text" id="f_paterno" placeholder="GARCIA" oninput="this.value=this.value.toUpperCase()" required>
+            <span class="err-msg">Campo requerido</span>
+          </div>
+          <div class="field">
+            <label>Apellido Materno</label>
+            <input type="text" id="f_materno" placeholder="LOPEZ (opcional)" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Fecha de Nacimiento<span class="req">*</span></label>
+            <input type="text" id="f_dob" placeholder="dd/mm/aaaa" maxlength="10" oninput="formatDateInput(this)" required>
+            <span class="err-msg">Fecha requerida</span>
+          </div>
+          <div class="field">
+            <label>Lugar de Nacimiento<span class="req">*</span></label>
+            <input type="text" id="f_place" placeholder="GUADALAJARA, JALISCO, MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>País de Nacimiento<span class="req">*</span></label>
+            <input type="text" id="f_birthplace" placeholder="JALISCO, MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Ocupación</label>
+            <input type="text" id="f_occupation" placeholder="INGENIERO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Edad Actual</label>
+            <input type="number" id="f_age" placeholder="39" min="18" max="99">
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <div class="vf-toggle" style="margin-top:4px">
+              <button type="button" class="vf-btn vivo active" onclick="setVF('f','V',this)">Vivo</button>
+              <button type="button" class="vf-btn finado" onclick="setVF('f','F',this)">Finado</button>
+            </div>
+            <input type="hidden" id="f_alive" value="V">
+          </div>
+          <div class="field span-2">
+            <label>Domicilio Actual<span class="req">*</span></label>
+            <input type="text" id="f_address" placeholder="1234 MAIN ST, ALBUQUERQUE, NM" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Código Postal</label>
+            <input type="text" id="f_zip" placeholder="87101" maxlength="10">
+          </div>
+          <div class="field">
+            <label>Teléfono<span class="req">*</span></label>
+            <input type="tel" id="f_phone" placeholder="505-555-0101">
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><!-- /father-card -->
+
+    <!-- MOTHER -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon green">👩</div>
+        <div>
+          <div class="card-title">Datos de la Madre</div>
+          <div class="card-subtitle">Usar nombre de soltera · Sin abreviaturas</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid col-3">
+          <div class="field">
+            <label>Primer Nombre(s)<span class="req">*</span></label>
+            <input type="text" id="m_first" placeholder="MARIA ELENA" oninput="this.value=this.value.toUpperCase()" required>
+            <span class="err-msg">Campo requerido</span>
+          </div>
+          <div class="field">
+            <label>Segundo Nombre (Middle)</label>
+            <input type="text" id="m_middle" placeholder="ELENA (opcional)" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Paterno (Soltera)<span class="req">*</span></label>
+            <input type="text" id="m_paterno" placeholder="RODRIGUEZ" oninput="this.value=this.value.toUpperCase()" required>
+            <span class="err-msg">Campo requerido</span>
+          </div>
+          <div class="field">
+            <label>Apellido Materno (Soltera)</label>
+            <input type="text" id="m_materno" placeholder="SANTOS (opcional)" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Fecha de Nacimiento<span class="req">*</span></label>
+            <input type="text" id="m_dob" placeholder="dd/mm/aaaa" maxlength="10" oninput="formatDateInput(this)" required>
+          </div>
+          <div class="field">
+            <label>Lugar de Nacimiento<span class="req">*</span></label>
+            <input type="text" id="m_place" placeholder="MONTERREY, NUEVO LEON, MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>País de Nacimiento</label>
+            <input type="text" id="m_birthplace" placeholder="NUEVO LEON, MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Ocupación</label>
+            <input type="text" id="m_occupation" placeholder="MAESTRA" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Edad Actual</label>
+            <input type="number" id="m_age" placeholder="36" min="18" max="99">
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <div class="vf-toggle" style="margin-top:4px">
+              <button type="button" class="vf-btn vivo active" onclick="setVF('m','V',this)">Vivo</button>
+              <button type="button" class="vf-btn finado" onclick="setVF('m','F',this)">Finado</button>
+            </div>
+            <input type="hidden" id="m_alive" value="V">
+          </div>
+          <div class="field span-2">
+            <label>Domicilio Actual</label>
+            <input type="text" id="m_address" placeholder="1234 MAIN ST, ALBUQUERQUE, NM" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Código Postal</label>
+            <input type="text" id="m_zip" placeholder="87101" maxlength="10">
+          </div>
+          <div class="field">
+            <label>Teléfono<span class="req">*</span></label>
+            <input type="tel" id="m_phone" placeholder="505-555-0202">
+          </div>
+          <div class="field span-2">
+            <label>Email</label>
+            <input type="email" id="family_email" placeholder="familia@email.com">
+          </div>
+        </div>
+
+        <!-- MOTHER DEFAULT RESIDENCE (used as default for all children) -->
+        <div class="form-grid col-3" style="margin-top:16px">
+          <div class="section-divider">
+            Domicilio Predeterminado al Momento del Parto
+            <span style="font-weight:400; font-size:10px; color:var(--muted); text-transform:none; letter-spacing:0; margin-left:8px;">
+              Se usa en todos los hijos · Se puede cambiar por hijo en Paso 1
+            </span>
+          </div>
+          <div class="field">
+            <label>Estado (EUA)<span class="req">*</span></label>
+            <input type="text" id="m_res_state" placeholder="NEW MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Condado<span class="req">*</span></label>
+            <input type="text" id="m_res_county" placeholder="BERNALILLO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Ciudad<span class="req">*</span></label>
+            <input type="text" id="m_res_city" placeholder="ALBUQUERQUE" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field span-2">
+            <label>Dirección</label>
+            <input type="text" id="m_res_street" placeholder="1234 MAIN ST" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Código Postal</label>
+            <input type="text" id="m_res_zip" placeholder="87101">
+          </div>
+          <div class="field">
+            <label>¿Dentro de límites de ciudad?</label>
+            <select id="inside_city_limits">
+              <option value="SI">Sí</option>
+              <option value="NO">No</option>
+            </select>
+          </div>
+          <div class="field span-2">
+            <label>Dirección Postal (si diferente)</label>
+            <input type="text" id="mailing_address" placeholder="Dejar vacío si es la misma" oninput="this.value=this.value.toUpperCase()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRANDPARENTS PATERNAL -->
+    <div id="abp-card">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon gold">👴</div>
+        <div>
+          <div class="card-title">Abuelos Paternos</div>
+          <div class="card-subtitle">Datos del padre del padre y madre del padre</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid col-3">
+          <div class="section-divider">Abuelo Paterno</div>
+          <div class="field">
+            <label>Nombre Completo<span class="req">*</span></label>
+            <input type="text" id="abp_first" placeholder="ROBERTO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Paterno</label>
+            <input type="text" id="abp_pat" placeholder="GARCIA" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Materno</label>
+            <input type="text" id="abp_mat" placeholder="MENDEZ" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field span-2">
+            <label>Lugar de Nacimiento (País y Estado)<span class="req">*</span></label>
+            <input type="text" id="abp_place" placeholder="JALISCO, MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <div class="vf-toggle" style="margin-top:4px">
+              <button type="button" class="vf-btn vivo active" onclick="setVF('abp','V',this)">Vivo</button>
+              <button type="button" class="vf-btn finado" onclick="setVF('abp','F',this)">Finado</button>
+            </div>
+            <input type="hidden" id="abp_alive" value="V">
+          </div>
+
+          <div class="section-divider">Abuela Paterna</div>
+          <div class="field">
+            <label>Nombre Completo<span class="req">*</span></label>
+            <input type="text" id="abm_first" placeholder="LUCIA" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Paterno</label>
+            <input type="text" id="abm_pat" placeholder="LOPEZ" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Materno</label>
+            <input type="text" id="abm_mat" placeholder="PEREZ" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field span-2">
+            <label>Lugar de Nacimiento (País y Estado)<span class="req">*</span></label>
+            <input type="text" id="abm_place" placeholder="JALISCO, MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <div class="vf-toggle" style="margin-top:4px">
+              <button type="button" class="vf-btn vivo active" onclick="setVF('abm','V',this)">Vivo</button>
+              <button type="button" class="vf-btn finado" onclick="setVF('abm','F',this)">Finado</button>
+            </div>
+            <input type="hidden" id="abm_alive" value="V">
+          </div>
+
+          <div class="section-divider">Domicilio Abuelo Paterno</div>
+          <div class="field span-2">
+            <label>Domicilio</label>
+            <input type="text" id="abp_address" placeholder="456 OAK AVE, GUADALAJARA, JAL" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Código Postal</label>
+            <input type="text" id="abp_zip" placeholder="44100">
+          </div>
+
+          <div class="section-divider">Domicilio Abuela Paterna</div>
+          <div class="field span-2">
+            <label>Domicilio</label>
+            <input type="text" id="abm_address" placeholder="456 OAK AVE, GUADALAJARA, JAL (si diferente)" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Código Postal</label>
+            <input type="text" id="abm_zip" placeholder="44100">
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><!-- /abp-card -->
+
+    <!-- GRANDPARENTS MATERNAL -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon red">👵</div>
+        <div>
+          <div class="card-title">Abuelos Maternos</div>
+          <div class="card-subtitle">Datos del padre de la madre y madre de la madre</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid col-3">
+          <div class="section-divider">Abuelo Materno</div>
+          <div class="field">
+            <label>Nombre Completo<span class="req">*</span></label>
+            <input type="text" id="abmat_first" placeholder="PEDRO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Paterno</label>
+            <input type="text" id="abmat_pat" placeholder="RODRIGUEZ" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Materno</label>
+            <input type="text" id="abmat_mat" placeholder="VILLA" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field span-2">
+            <label>Lugar de Nacimiento (País y Estado)</label>
+            <input type="text" id="abmat_place" placeholder="NUEVO LEON, MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <div class="vf-toggle" style="margin-top:4px">
+              <button type="button" class="vf-btn vivo active" onclick="setVF('abmat','V',this)">Vivo</button>
+              <button type="button" class="vf-btn finado" onclick="setVF('abmat','F',this)">Finado</button>
+            </div>
+            <input type="hidden" id="abmat_alive" value="V">
+          </div>
+
+          <div class="section-divider">Abuela Materna</div>
+          <div class="field">
+            <label>Nombre Completo<span class="req">*</span></label>
+            <input type="text" id="abmatm_first" placeholder="ROSA" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Paterno</label>
+            <input type="text" id="abmatm_pat" placeholder="SANTOS" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Materno</label>
+            <input type="text" id="abmatm_mat" placeholder="MORA" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field span-2">
+            <label>Lugar de Nacimiento (País y Estado)</label>
+            <input type="text" id="abmatm_place" placeholder="NUEVO LEON, MEXICO" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <div class="vf-toggle" style="margin-top:4px">
+              <button type="button" class="vf-btn vivo active" onclick="setVF('abmatm','V',this)">Vivo</button>
+              <button type="button" class="vf-btn finado" onclick="setVF('abmatm','F',this)">Finado</button>
+            </div>
+            <input type="hidden" id="abmatm_alive" value="V">
+          </div>
+
+          <div class="section-divider">Domicilio Abuelo Materno</div>
+          <div class="field span-2">
+            <label>Domicilio</label>
+            <input type="text" id="abmat_address" placeholder="789 PINE ST, MONTERREY, NL" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Código Postal</label>
+            <input type="text" id="abmat_zip" placeholder="64000">
+          </div>
+
+          <div class="section-divider">Domicilio Abuela Materna</div>
+          <div class="field span-2">
+            <label>Domicilio</label>
+            <input type="text" id="abmatm_address" placeholder="789 PINE ST, MONTERREY, NL (si diferente)" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Código Postal</label>
+            <input type="text" id="abmatm_zip" placeholder="64000">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPARECE + CONTACT -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon blue">📋</div>
+        <div><div class="card-title">Comparece &amp; Contacto</div></div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid col-2">
+          <div class="field">
+            <label>¿Quién Comparece?<span class="req">*</span></label>
+            <div class="radio-group" id="comparece_group">
+              <label class="radio-option"><input type="radio" name="comparece" value="PADRE">El Padre</label>
+              <label class="radio-option"><input type="radio" name="comparece" value="MADRE">La Madre</label>
+              <label class="radio-option"><input type="radio" name="comparece" value="AMBOS" checked>Ambos</label>
+              <label class="radio-option"><input type="radio" name="comparece" value="OTRO">Persona Distinta</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Teléfono del Registrado (si mayor de edad)</label>
+            <input type="tel" id="registrado_phone" placeholder="505-555-0303">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goToStep(1)">‹ Atrás — Menor</button>
+      <button class="btn btn-primary" onclick="goToStep(3)">Continuar → Revisión ›</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 3: REVIEW ══════════════════════════════════════ -->
+  <div class="step-page" id="page3">
+    <div class="page-title">Revisión y Validación</div>
+    <div class="page-subtitle">Verifique todos los datos antes de enviar al sistema.</div>
+
+    <div class="validation-banner" id="validationBanner">
+      <div class="banner-icon">🚫</div>
+      <div class="banner-content error">
+        <h4>Errores encontrados — no se puede enviar</h4>
+        <ul class="banner-list" id="errorList"></ul>
+      </div>
+    </div>
+
+    <div class="validation-banner success" id="successBanner" style="display:none">
+      <div class="banner-icon">✅</div>
+      <div class="banner-content success">
+        <h4>Todos los datos verificados — listo para enviar al sistema</h4>
+      </div>
+    </div>
+
+    <!-- Submit error message -->
+    <div id="submitError" style="display:none; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:var(--danger);"></div>
+
+    <div id="reviewContent"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goToStep(2)">← Atrás</button>
+      <button class="btn btn-success" id="submitBtn" onclick="submitToSystem()">
+        ↑ Enviar al Sistema
+      </button>
+    </div>
+    <div style="text-align:right; margin-top:8px;">
+      <button onclick="generateFormsLocalJSON()" style="background:none; border:none; cursor:pointer; font-size:11px; color:var(--muted); text-decoration:underline;">
+        ¿Sin conexión? Descargar JSON local
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 4: RESULT ══════════════════════════════════════ -->
+  <div class="step-page" id="page4">
+
+    <!-- STATE A: Submitted (shown after submitToSystem) -->
+    <div id="result-submitted" class="result-screen">
+      <div class="result-icon">📋</div>
+      <div class="result-title" style="color:var(--success);">Caso Enviado al Sistema</div>
+      <div class="result-sub" id="resultMessage">El POC ha sido notificado y revisará el caso en breve.</div>
+      <div class="result-cards">
+        <div class="result-card">
+          <div class="rc-label">ID del Caso</div>
+          <div class="rc-value" id="resultCaseId">—</div>
+        </div>
+        <div class="result-card">
+          <div class="rc-label">Estado</div>
+          <div class="rc-value" style="color:var(--warn);">⏳ Pendiente de revisión</div>
+        </div>
+      </div>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:24px;">
+        Recibirá un correo cuando el POC tome una decisión. No es necesario hacer nada más por ahora.
+      </div>
+      <button class="btn btn-secondary" onclick="resetApp()" style="margin:0 auto;">↺ Nueva Sesión</button>
+    </div>
+
+    <!-- STATE B: Approved — Generate PDFs (shown when ?case=ID loaded + approved) -->
+    <div id="result-approved" class="result-screen" style="display:none">
+      <div class="result-icon">✅</div>
+      <div class="result-title" style="color:var(--success);">Caso Aprobado — Generar PDFs</div>
+      <div class="result-sub" id="approvedMessage">El POC aprobó este caso. Genere los formularios PDF.</div>
+      <div class="result-cards" style="margin-bottom:24px;">
+        <div class="result-card">
+          <div class="rc-label">ID del Caso</div>
+          <div class="rc-value" id="approvedCaseId">—</div>
+        </div>
+        <div class="result-card">
+          <div class="rc-label">Carpeta Drive</div>
+          <div class="rc-value" id="approvedDriveLink" style="font-size:12px;">—</div>
+        </div>
+      </div>
+      <div class="download-grid" id="downloadGrid"></div>
+      <!-- Build 4 placeholder: PDF generation button -->
+      <div style="padding:16px 20px; background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; max-width:500px; margin:0 auto 24px; font-size:12px; color:#1e40af;">
+        <strong>Generación de PDFs (Build 4)</strong><br>
+        El botón para generar y subir PDFs directamente al Drive estará disponible en la próxima actualización.
+        Por ahora, use el script Python local: <code>python fill_forms.py datos.json</code>
+      </div>
+      <button class="btn btn-secondary" onclick="resetApp()" style="margin:0 auto;">↺ Nueva Sesión</button>
+    </div>
+
+  </div>
+
+</div><!-- /app-body -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// APPS SCRIPT CONFIG
+// Fill in these values after completing Build 2 deployment.
+// ═══════════════════════════════════════════════════════════════
+const GAS_CONFIG = {
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyus2A8To8XqjGsZYOdt4rOLD1RjyLUU1l_H5RQIxaMQCgoXpI46a-yBEqwwHiLUyKb/exec',
+  SECRET_TOKEN:    'MC-Consulate-2026-AlbuqNM-X9k2',
+  APP_VERSION:     '2.0',
+};
+const GAS_CONFIGURED = !GAS_CONFIG.APPS_SCRIPT_URL.includes('REPLACE_WITH');
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let children = [];
+let activeChildIdx = 0;
+let currentStep = 1;
+let currentCaseId = null;
+let currentCaseStatus = null;
+let isEditMode = false;
+
+// ═══════════════════════════════════════════════════════════════
+// STEP NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function goToStep(n) {
+  if (n === 3) buildReview();
+  document.querySelectorAll('.step-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page' + n).classList.add('active');
+  currentStep = n;
+  document.querySelectorAll('.step-dot').forEach(d => {
+    const s = parseInt(d.dataset.step);
+    d.classList.remove('active','done');
+    if (s === n) d.classList.add('active');
+    else if (s < n) d.classList.add('done');
+  });
+  document.getElementById('progressBar').style.width = (n * 25) + '%';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VIVO / FINADO TOGGLE
+// ═══════════════════════════════════════════════════════════════
+function setVF(prefix, v, btn) {
+  document.getElementById(prefix + '_alive').value = v;
+  const parent = btn.closest('.vf-toggle');
+  parent.querySelectorAll('.vf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setVFProgrammatic(prefix, v) {
+  const hidden = document.getElementById(prefix + '_alive');
+  if (!hidden) return;
+  hidden.value = v;
+  const toggle = hidden.closest('.field') ? hidden.closest('.field').querySelector('.vf-toggle') : null;
+  if (!toggle) return;
+  toggle.querySelectorAll('.vf-btn').forEach(b => b.classList.remove('active'));
+  const target = toggle.querySelector('.vf-btn.' + (v === 'V' ? 'vivo' : 'finado'));
+  if (target) target.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADDRESS OVERRIDE TOGGLE (per-child birth address)
+// ═══════════════════════════════════════════════════════════════
+function toggleAddrOverride(type, i) {
+  if (type === 'm') {
+    const cb  = document.getElementById(`cp_addr_same_m_${i}`);
+    const sec = document.getElementById(`cp_addr_override_m_${i}`);
+    if (sec) sec.style.display = (cb && !cb.checked) ? 'block' : 'none';
+  } else {
+    const cb  = document.getElementById(`cp_addr_same_f_${i}`);
+    const sec = document.getElementById(`cp_addr_override_f_${i}`);
+    if (sec) sec.style.display = (cb && !cb.checked) ? 'block' : 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FAMILY FATHER → PER-CHILD COPY
+// ═══════════════════════════════════════════════════════════════
+function copyFamilyFatherToChild(i) {
+  const fields = [
+    [`cp_father_first_${i}`,       'f_first'],
+    [`cp_father_middle_${i}`,      'f_middle'],
+    [`cp_father_paterno_${i}`,     'f_paterno'],
+    [`cp_father_materno_${i}`,     'f_materno'],
+    [`cp_father_dob_${i}`,         'f_dob'],
+    [`cp_father_place_${i}`,       'f_place'],
+    [`cp_father_birthplace_${i}`,  'f_birthplace'],
+    [`cp_father_occupation_${i}`,  'f_occupation'],
+    [`cp_father_age_${i}`,         'f_age'],
+    [`cp_father_address_${i}`,     'f_address'],
+    [`cp_father_zip_${i}`,         'f_zip'],
+    [`cp_father_phone_${i}`,       'f_phone'],
+  ];
+  fields.forEach(([childId, familyId]) => {
+    const src = document.getElementById(familyId);
+    const dst = document.getElementById(childId);
+    if (src && dst) dst.value = src.value;
+  });
+  const familyAlive = document.getElementById('f_alive');
+  const childAlive  = document.getElementById(`cp_father_${i}_alive`);
+  if (familyAlive && childAlive) {
+    childAlive.value = familyAlive.value;
+    const section = document.getElementById(`cp_father_section_${i}`);
+    if (section) {
+      section.querySelectorAll('.vf-btn').forEach(b => b.classList.remove('active'));
+      const tc = familyAlive.value === 'V' ? 'vivo' : 'finado';
+      section.querySelector('.vf-btn.' + tc)?.classList.add('active');
+    }
+  }
+}
+
+function toggleNoFatherFamily() {
+  const cb         = document.getElementById('no_father_family');
+  const fatherCard = document.getElementById('father-card');
+  const abpCard    = document.getElementById('abp-card');
+  const noFather   = cb.checked;
+  fatherCard.style.display = noFather ? 'none' : '';
+  abpCard.style.display    = noFather ? 'none' : '';
+  document.querySelectorAll('input[name="comparece"]').forEach(r => {
+    if (noFather) {
+      if (r.value === 'MADRE') { r.checked = true; }
+      else if (r.value === 'PADRE' || r.value === 'AMBOS') {
+        r.checked = false; r.disabled = true;
+        r.closest('label').style.opacity = '0.4';
+      }
+    } else {
+      r.disabled = false;
+      r.closest('label').style.opacity = '';
+    }
+  });
+}
+
+function getChildFatherStatus(i) {
+  const sel = document.querySelector(`input[name="cp_father_status_${i}"]:checked`);
+  return sel ? sel.value : 'family';
+}
+
+function toggleChildFatherStatus(i) {
+  const status  = getChildFatherStatus(i);
+  const section = document.getElementById(`cp_father_section_${i}`);
+  if (status === 'different') {
+    section.style.display = 'block';
+    copyFamilyFatherToChild(i);
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHILDREN MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+function addChild() {
+  const idx = children.length;
+  children.push({ id: idx });
+  renderChildTabs();
+  renderChildPanel(idx);
+  switchChildTab(idx);
+  // 7+ children warning
+  const warn = document.getElementById('warning7Children');
+  if (warn) warn.classList.toggle('show', children.length >= 7);
+}
+
+function renderChildTabs() {
+  const tabs = document.getElementById('childTabs');
+  tabs.innerHTML = children.map((c, i) => `
+    <button class="child-tab ${i === activeChildIdx ? 'active' : ''}"
+            onclick="switchChildTab(${i})">
+      <span class="tab-badge">${i+1}</span>
+      ${getChildName(i)}
+    </button>
+  `).join('');
+}
+
+function getChildName(i) {
+  const p = document.getElementById(`cp_paterno_${i}`);
+  const f = document.getElementById(`cp_first_${i}`);
+  if (p && p.value) return p.value.split(' ')[0] + (f ? ' ' + f.value.split(' ')[0] : '');
+  return `Hijo ${i+1}`;
+}
+
+function switchChildTab(idx) {
+  activeChildIdx = idx;
+  document.querySelectorAll('.child-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById(`cp_panel_${idx}`);
+  if (panel) panel.classList.add('active');
+  renderChildTabs();
+}
+
+function renderChildPanel(idx) {
+  const container = document.getElementById('childPanels');
+  const div = document.createElement('div');
+  div.className = `child-panel ${idx === activeChildIdx ? 'active' : ''}`;
+  div.id = `cp_panel_${idx}`;
+  div.innerHTML = childPanelHTML(idx);
+  container.appendChild(div);
+}
+
+function childPanelHTML(i) {
+  return `
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-icon green">🧒</div>
+      <div style="flex:1; min-width:0;">
+        <div class="card-title">Datos del Hijo ${i+1}</div>
+        <div class="card-subtitle">Nombre tal como aparece en el acta de nacimiento estadounidense</div>
+      </div>
+      ${i > 0 ? `<button type="button" class="btn btn-danger" style="flex-shrink:0;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;z-index:10;position:relative;" onclick="eliminarHijo(${i});">✕ Eliminar Hijo ${i+1}</button>` : ''}
+    </div>
+    <div class="card-body">
+      <div class="form-grid col-3">
+        <div class="field">
+          <label>Primer Nombre(s)<span class="req">*</span></label>
+          <input type="text" id="cp_first_${i}" placeholder="SOFIA ISABELLA"
+                 oninput="this.value=this.value.toUpperCase(); renderChildTabs()">
+          <span class="err-msg">Campo requerido</span>
+        </div>
+        <div class="field">
+          <label>Apellido Paterno<span class="req">*</span></label>
+          <input type="text" id="cp_paterno_${i}" placeholder="GARCIA"
+                 oninput="this.value=this.value.toUpperCase(); renderChildTabs()">
+          <span class="err-msg">Campo requerido</span>
+        </div>
+        <div class="field">
+          <label>Apellido Materno</label>
+          <input type="text" id="cp_materno_${i}" placeholder="RODRIGUEZ (opcional)"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label>Segundo Nombre (Middle)</label>
+          <input type="text" id="cp_middle_${i}" placeholder="ISABELLA"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label>Fecha de Nacimiento<span class="req">*</span></label>
+          <input type="text" id="cp_dob_${i}" placeholder="dd/mm/aaaa" maxlength="10" oninput="formatDateInput(this); checkChildAge(${i})">
+          <span class="err-msg">Fecha requerida</span>
+        </div>
+        <div class="field">
+          <label>Hora de Nacimiento — 24hrs<span class="req">*</span></label>
+          <input type="text" id="cp_time_${i}" placeholder="14:30"
+                 maxlength="5" oninput="formatTimeInput(this)"
+                 style="font-variant-numeric: tabular-nums; letter-spacing:1px;">
+        </div>
+        <div class="field">
+          <label>Sexo<span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="cp_sex_${i}" value="M"> Masculino</label>
+            <label class="radio-option"><input type="radio" name="cp_sex_${i}" value="F"> Femenino</label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Tipo de Nacimiento</label>
+          <select id="cp_birth_type_${i}" onchange="toggleBirthOrder(${i})">
+            <option value="UNICO">Único</option>
+            <option value="GEMELO">Gemelo</option>
+            <option value="TRILLIZO">Trillizo</option>
+          </select>
+        </div>
+        <div class="field" id="cp_birth_order_wrap_${i}" style="display:none">
+          <label>Orden de Nacimiento</label>
+          <select id="cp_birth_order_${i}">
+            <option value="1">1°</option>
+            <option value="2">2°</option>
+            <option value="3">3°</option>
+          </select>
+        </div>
+
+        <div class="section-divider">Lugar de Nacimiento</div>
+        <div class="field">
+          <label>Ciudad / Pueblo<span class="req">*</span></label>
+          <input type="text" id="cp_city_${i}" placeholder="ALBUQUERQUE"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label>Condado<span class="req">*</span></label>
+          <input type="text" id="cp_county_${i}" placeholder="BERNALILLO"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label>Estado (EUA)<span class="req">*</span></label>
+          <input type="text" id="cp_state_${i}" placeholder="NEW MEXICO"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+
+        <div class="section-divider">Acta de Nacimiento EUA (Traducción)</div>
+        <div class="field">
+          <label>Estado del Acta<span class="req">*</span></label>
+          <input type="text" id="cp_estado_${i}" placeholder="NEW MEXICO"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label>Número de Registro (Birth Number)</label>
+          <input type="text" id="cp_birth_num_${i}" placeholder="2020-NM-123456">
+        </div>
+        <div class="field">
+          <label>Número de Archivo Local (18a)</label>
+          <input type="text" id="cp_local_file_${i}" placeholder="NM-2020-456">
+        </div>
+        <div class="field">
+          <label>Fecha Recibida por Registrador (18b)</label>
+          <input type="text" id="cp_date_reg_${i}" placeholder="dd/mm/aaaa" maxlength="10" oninput="formatDateInput(this)">
+        </div>
+        <div class="field">
+          <label>Tipo de Instalación<span class="req">*</span></label>
+          <select id="cp_facility_type_${i}">
+            <option value="HOSPITAL">Hospital</option>
+            <option value="CLINICA">Clínica / Consultorio Médico</option>
+            <option value="CENTRO MATERNIDAD">Centro de Maternidad</option>
+            <option value="HOGAR">Nacimiento en Casa</option>
+            <option value="OTRO">Otro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Nombre del Hospital / Instalación<span class="req">*</span></label>
+          <input type="text" id="cp_hospital_${i}" placeholder="PRESBYTERIAN HOSPITAL"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label>Nombre del Médico / Partera<span class="req">*</span></label>
+          <input type="text" id="cp_attendant_${i}" placeholder="DR. JAMES SMITH"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="field">
+          <label>Tipo de Profesional</label>
+          <select id="cp_attendant_type_${i}">
+            <option value="MD">MD — Doctor en Medicina</option>
+            <option value="DO">DO — Doctor en Osteopatía</option>
+            <option value="CNM">CNM — Enfermera Partera Certificada</option>
+            <option value="PARTERA">Partera</option>
+            <option value="OTRO">Otro</option>
+          </select>
+        </div>
+
+        <div class="section-divider">Sección 9 — Certificador / Certifier</div>
+        <div class="field span-3">
+          <label>9a. Nombre del Certificador / Certifier Name</label>
+          <input type="text" id="cp_certifier_name_${i}" placeholder="DR. JAMES SMITH"
+                 oninput="this.value=this.value.toUpperCase()">
+          <span class="field-hint" style="font-size:11px;color:var(--muted);margin-top:3px;display:block;">
+            Persona que certifica que el menor nació vivo
+          </span>
+        </div>
+        <div class="field">
+          <label>Fecha de Certificación / Certifier Date</label>
+          <input type="text" id="cp_certifier_date_${i}" placeholder="dd/mm/aaaa" maxlength="10" oninput="formatDateInput(this)">
+        </div>
+        <div class="field span-2">
+          <label>9b. Tipo de Certificador / Certifier Type</label>
+          <select id="cp_certifier_type_${i}">
+            <option value="MEDICO">Médico que atendió / Attendant</option>
+            <option value="ADMIN">Administrador del hospital o designado / Facility Admin</option>
+            <option value="OTRO">Otro / Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- AGE-BASED ID REQUIREMENT NOTICE -->
+      <div id="cp_age_notice_${i}" style="display:none; margin-top:14px; padding:12px 16px;
+           background:#fffbeb; border:1px solid #fcd34d; border-radius:6px; font-size:12px; color:#92400e;">
+      </div>
+
+      <!-- ══ PER-CHILD ADDRESS AT TIME OF BIRTH (Option B Hybrid) ══ -->
+      <div class="addr-section">
+        <div class="addr-section-title">🏠 Domicilio al Momento de Este Nacimiento</div>
+        <div style="font-size:11px; color:var(--success); margin-bottom:10px; opacity:.8;">
+          Si la dirección fue diferente a la predeterminada en Paso 2, desmarque la casilla correspondiente para ingresar la dirección específica.
+        </div>
+
+        <!-- Mother address -->
+        <label class="addr-same-label">
+          <input type="checkbox" id="cp_addr_same_m_${i}" checked
+                 onchange="toggleAddrOverride('m', ${i})"
+                 style="width:14px; height:14px; cursor:pointer; flex-shrink:0;">
+          <span>Madre: mismo domicilio que el predeterminado (Paso 2)</span>
+        </label>
+        <div id="cp_addr_override_m_${i}" style="display:none;">
+          <div class="addr-override-fields">
+            <div class="addr-override-label">Domicilio de la madre en este nacimiento</div>
+            <div class="form-grid col-3" style="gap:8px;">
+              <div class="field">
+                <label>Estado (EUA)<span class="req">*</span></label>
+                <input type="text" id="cp_m_res_state_${i}" placeholder="NEW MEXICO" oninput="this.value=this.value.toUpperCase()">
+              </div>
+              <div class="field">
+                <label>Condado<span class="req">*</span></label>
+                <input type="text" id="cp_m_res_county_${i}" placeholder="BERNALILLO" oninput="this.value=this.value.toUpperCase()">
+              </div>
+              <div class="field">
+                <label>Ciudad<span class="req">*</span></label>
+                <input type="text" id="cp_m_res_city_${i}" placeholder="ALBUQUERQUE" oninput="this.value=this.value.toUpperCase()">
+              </div>
+              <div class="field span-2">
+                <label>Dirección</label>
+                <input type="text" id="cp_m_res_street_${i}" placeholder="1234 MAIN ST" oninput="this.value=this.value.toUpperCase()">
+              </div>
+              <div class="field">
+                <label>Código Postal</label>
+                <input type="text" id="cp_m_res_zip_${i}" placeholder="87101">
+              </div>
+              <div class="field">
+                <label>¿Dentro de límites de ciudad?</label>
+                <select id="cp_inside_city_limits_${i}">
+                  <option value="SI">Sí</option>
+                  <option value="NO">No</option>
+                </select>
+              </div>
+              <div class="field span-2">
+                <label>Dirección Postal (si diferente)</label>
+                <input type="text" id="cp_mailing_address_${i}" placeholder="Dejar vacío si es la misma" oninput="this.value=this.value.toUpperCase()">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="addr-sep"></div>
+
+        <!-- Father address at birth -->
+        <label class="addr-same-label">
+          <input type="checkbox" id="cp_addr_same_f_${i}" checked
+                 onchange="toggleAddrOverride('f', ${i})"
+                 style="width:14px; height:14px; cursor:pointer; flex-shrink:0;">
+          <span>Padre: mismo domicilio que el actual (Paso 2)</span>
+        </label>
+        <div id="cp_addr_override_f_${i}" style="display:none;">
+          <div class="addr-override-fields">
+            <div class="addr-override-label">Domicilio del padre en este nacimiento</div>
+            <div class="form-grid col-3" style="gap:8px;">
+              <div class="field span-2">
+                <label>Domicilio</label>
+                <input type="text" id="cp_f_address_at_birth_${i}" placeholder="789 OAK DR, RIO RANCHO, NM" oninput="this.value=this.value.toUpperCase()">
+              </div>
+              <div class="field">
+                <label>Código Postal</label>
+                <input type="text" id="cp_f_zip_at_birth_${i}" placeholder="87124" maxlength="10">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FATHER STATUS SELECTOR -->
+      <div style="margin-top:16px; padding:14px 16px; background:#f0f4ff; border:1px solid #c7d4f0; border-radius:8px;">
+        <div style="font-size:12px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:#1e3a6e; margin-bottom:10px;">
+          👨 Padre de este hijo
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:13px; color:#1e3a6e;">
+            <input type="radio" name="cp_father_status_${i}" value="family" checked
+                   onchange="toggleChildFatherStatus(${i})"
+                   style="width:15px; height:15px; cursor:pointer;">
+            <span>👨‍👩‍👧 Mismo padre registrado en la familia (Paso 2)</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:13px; color:#1e3a6e;">
+            <input type="radio" name="cp_father_status_${i}" value="different"
+                   onchange="toggleChildFatherStatus(${i})"
+                   style="width:15px; height:15px; cursor:pointer;">
+            <span>👤 Padre diferente — ingresar datos específicos para este hijo</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-size:13px; color:#92400e;">
+            <input type="radio" name="cp_father_status_${i}" value="none"
+                   onchange="toggleChildFatherStatus(${i})"
+                   style="width:15px; height:15px; cursor:pointer;">
+            <span>🚫 Sin padre registrado — formularios quedarán en blanco para padre y abuelos paternos</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- PER-CHILD FATHER OVERRIDE (hidden by default) -->
+      <div id="cp_father_section_${i}" style="display:none; margin-top:12px; padding:16px; background:#fafbff; border:1px solid #c7d4f0; border-radius:8px;">
+        <div style="font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#1e3a6e; margin-bottom:14px;">
+          👨 Datos del Padre — Hijo ${i+1}
+        </div>
+        <div class="form-grid col-3">
+          <div class="field">
+            <label>Primer Nombre(s)<span class="req">*</span></label>
+            <input type="text" id="cp_father_first_${i}" placeholder="JUAN CARLOS"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Segundo Nombre (Middle)</label>
+            <input type="text" id="cp_father_middle_${i}" placeholder="ANTONIO (opcional)"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Paterno<span class="req">*</span></label>
+            <input type="text" id="cp_father_paterno_${i}" placeholder="GARCIA"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Apellido Materno</label>
+            <input type="text" id="cp_father_materno_${i}" placeholder="LOPEZ (opcional)"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Fecha de Nacimiento<span class="req">*</span></label>
+            <input type="text" id="cp_father_dob_${i}" placeholder="dd/mm/aaaa"
+                   maxlength="10" oninput="formatDateInput(this)">
+          </div>
+          <div class="field">
+            <label>Lugar de Nacimiento</label>
+            <input type="text" id="cp_father_place_${i}" placeholder="GUADALAJARA, JALISCO, MEXICO"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>País de Nacimiento</label>
+            <input type="text" id="cp_father_birthplace_${i}" placeholder="JALISCO, MEXICO"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Ocupación</label>
+            <input type="text" id="cp_father_occupation_${i}" placeholder="INGENIERO"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Edad Actual</label>
+            <input type="number" id="cp_father_age_${i}" placeholder="39" min="18" max="99">
+          </div>
+          <div class="field">
+            <label>Estado</label>
+            <div class="vf-toggle" style="margin-top:4px">
+              <button type="button" class="vf-btn vivo active"
+                      onclick="setVF('cp_father_${i}','V',this)">Vivo</button>
+              <button type="button" class="vf-btn finado"
+                      onclick="setVF('cp_father_${i}','F',this)">Finado</button>
+            </div>
+            <input type="hidden" id="cp_father_${i}_alive" value="V">
+          </div>
+          <div class="field span-2">
+            <label>Domicilio</label>
+            <input type="text" id="cp_father_address_${i}" placeholder="1234 MAIN ST, ALBUQUERQUE, NM"
+                   oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div class="field">
+            <label>Código Postal</label>
+            <input type="text" id="cp_father_zip_${i}" placeholder="87101" maxlength="10">
+          </div>
+          <div class="field">
+            <label>Teléfono</label>
+            <input type="tel" id="cp_father_phone_${i}" placeholder="505-555-0101">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SAVE / RESTORE CHILD DATA
+// ═══════════════════════════════════════════════════════════════
+function saveChildData(i) {
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const sex = document.querySelector(`input[name="cp_sex_${i}"]:checked`);
+  children[i] = {
+    id: i,
+    cp_first:          g(`cp_first_${i}`),
+    cp_paterno:        g(`cp_paterno_${i}`),
+    cp_materno:        g(`cp_materno_${i}`),
+    cp_middle:         g(`cp_middle_${i}`),
+    cp_dob:            g(`cp_dob_${i}`),
+    cp_time:           g(`cp_time_${i}`),
+    cp_sex:            sex ? sex.value : '',
+    cp_birth_type:     g(`cp_birth_type_${i}`),
+    cp_birth_order:    g(`cp_birth_order_${i}`),
+    cp_city:           g(`cp_city_${i}`),
+    cp_county:         g(`cp_county_${i}`),
+    cp_state:          g(`cp_state_${i}`),
+    cp_estado:         g(`cp_estado_${i}`),
+    cp_birth_num:      g(`cp_birth_num_${i}`),
+    cp_local_file:     g(`cp_local_file_${i}`),
+    cp_date_reg:       g(`cp_date_reg_${i}`),
+    cp_facility_type:  g(`cp_facility_type_${i}`),
+    cp_hospital:       g(`cp_hospital_${i}`),
+    cp_attendant:      g(`cp_attendant_${i}`),
+    cp_attendant_type: g(`cp_attendant_type_${i}`),
+    cp_certifier_name: g(`cp_certifier_name_${i}`),
+    cp_certifier_date: g(`cp_certifier_date_${i}`),
+    cp_certifier_type: g(`cp_certifier_type_${i}`),
+    // Address override — mother
+    cp_addr_same_m:        document.getElementById(`cp_addr_same_m_${i}`)?.checked ?? true,
+    cp_m_res_state:        g(`cp_m_res_state_${i}`),
+    cp_m_res_county:       g(`cp_m_res_county_${i}`),
+    cp_m_res_city:         g(`cp_m_res_city_${i}`),
+    cp_m_res_street:       g(`cp_m_res_street_${i}`),
+    cp_m_res_zip:          g(`cp_m_res_zip_${i}`),
+    cp_inside_city_limits: g(`cp_inside_city_limits_${i}`),
+    cp_mailing_address:    g(`cp_mailing_address_${i}`),
+    // Address override — father
+    cp_addr_same_f:          document.getElementById(`cp_addr_same_f_${i}`)?.checked ?? true,
+    cp_f_address_at_birth:   g(`cp_f_address_at_birth_${i}`),
+    cp_f_zip_at_birth:       g(`cp_f_zip_at_birth_${i}`),
+    // Father override
+    cp_father_status:        getChildFatherStatus(i),
+    cp_father_first:         g(`cp_father_first_${i}`),
+    cp_father_middle:        g(`cp_father_middle_${i}`),
+    cp_father_paterno:       g(`cp_father_paterno_${i}`),
+    cp_father_materno:       g(`cp_father_materno_${i}`),
+    cp_father_dob:           g(`cp_father_dob_${i}`),
+    cp_father_place:         g(`cp_father_place_${i}`),
+    cp_father_birthplace:    g(`cp_father_birthplace_${i}`),
+    cp_father_occupation:    g(`cp_father_occupation_${i}`),
+    cp_father_age:           g(`cp_father_age_${i}`),
+    cp_father_alive:         g(`cp_father_${i}_alive`) || 'V',
+    cp_father_address:       g(`cp_father_address_${i}`),
+    cp_father_zip:           g(`cp_father_zip_${i}`),
+    cp_father_phone:         g(`cp_father_phone_${i}`),
+  };
+}
+
+function restoreChildData(i) {
+  const s = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined) el.value = v; };
+  const d = children[i];
+  if (!d) return;
+  s(`cp_first_${i}`,         d.cp_first);
+  s(`cp_paterno_${i}`,       d.cp_paterno);
+  s(`cp_materno_${i}`,       d.cp_materno);
+  s(`cp_middle_${i}`,        d.cp_middle);
+  s(`cp_dob_${i}`,           d.cp_dob);
+  s(`cp_time_${i}`,          d.cp_time);
+  s(`cp_birth_type_${i}`,    d.cp_birth_type);
+  s(`cp_birth_order_${i}`,   d.cp_birth_order);
+  s(`cp_city_${i}`,          d.cp_city);
+  s(`cp_county_${i}`,        d.cp_county);
+  s(`cp_state_${i}`,         d.cp_state);
+  s(`cp_estado_${i}`,        d.cp_estado);
+  s(`cp_birth_num_${i}`,     d.cp_birth_num);
+  s(`cp_local_file_${i}`,    d.cp_local_file);
+  s(`cp_date_reg_${i}`,      d.cp_date_reg);
+  s(`cp_facility_type_${i}`, d.cp_facility_type);
+  s(`cp_hospital_${i}`,      d.cp_hospital);
+  s(`cp_attendant_${i}`,     d.cp_attendant);
+  s(`cp_attendant_type_${i}`,d.cp_attendant_type);
+  s(`cp_certifier_name_${i}`,d.cp_certifier_name);
+  s(`cp_certifier_date_${i}`,d.cp_certifier_date);
+  s(`cp_certifier_type_${i}`,d.cp_certifier_type);
+  // Sex radio
+  if (d.cp_sex) {
+    const radio = document.querySelector(`input[name="cp_sex_${i}"][value="${d.cp_sex}"]`);
+    if (radio) radio.checked = true;
+  }
+  // Birth order visibility
+  if (d.cp_birth_type && d.cp_birth_type !== 'UNICO') {
+    const wrap = document.getElementById(`cp_birth_order_wrap_${i}`);
+    if (wrap) wrap.style.display = 'flex';
+  }
+  // Address override — mother
+  const addrSameM = d.cp_addr_same_m !== false;
+  const cbM = document.getElementById(`cp_addr_same_m_${i}`);
+  if (cbM) cbM.checked = addrSameM;
+  const secM = document.getElementById(`cp_addr_override_m_${i}`);
+  if (secM) secM.style.display = addrSameM ? 'none' : 'block';
+  if (!addrSameM) {
+    s(`cp_m_res_state_${i}`,         d.cp_m_res_state);
+    s(`cp_m_res_county_${i}`,        d.cp_m_res_county);
+    s(`cp_m_res_city_${i}`,          d.cp_m_res_city);
+    s(`cp_m_res_street_${i}`,        d.cp_m_res_street);
+    s(`cp_m_res_zip_${i}`,           d.cp_m_res_zip);
+    s(`cp_inside_city_limits_${i}`,  d.cp_inside_city_limits);
+    s(`cp_mailing_address_${i}`,     d.cp_mailing_address);
+  }
+  // Address override — father
+  const addrSameF = d.cp_addr_same_f !== false;
+  const cbF = document.getElementById(`cp_addr_same_f_${i}`);
+  if (cbF) cbF.checked = addrSameF;
+  const secF = document.getElementById(`cp_addr_override_f_${i}`);
+  if (secF) secF.style.display = addrSameF ? 'none' : 'block';
+  if (!addrSameF) {
+    s(`cp_f_address_at_birth_${i}`, d.cp_f_address_at_birth);
+    s(`cp_f_zip_at_birth_${i}`,     d.cp_f_zip_at_birth);
+  }
+  // Father status radio + per-child father section
+  if (d.cp_father_status && d.cp_father_status !== 'family') {
+    const radio = document.querySelector(`input[name="cp_father_status_${i}"][value="${d.cp_father_status}"]`);
+    if (radio) radio.checked = true;
+  }
+  if (d.cp_father_status === 'different') {
+    const sec = document.getElementById(`cp_father_section_${i}`);
+    if (sec) sec.style.display = 'block';
+    s(`cp_father_first_${i}`,      d.cp_father_first);
+    s(`cp_father_middle_${i}`,     d.cp_father_middle);
+    s(`cp_father_paterno_${i}`,    d.cp_father_paterno);
+    s(`cp_father_materno_${i}`,    d.cp_father_materno);
+    s(`cp_father_dob_${i}`,        d.cp_father_dob);
+    s(`cp_father_place_${i}`,      d.cp_father_place);
+    s(`cp_father_birthplace_${i}`, d.cp_father_birthplace);
+    s(`cp_father_occupation_${i}`, d.cp_father_occupation);
+    s(`cp_father_age_${i}`,        d.cp_father_age);
+    s(`cp_father_${i}_alive`,      d.cp_father_alive);
+    const section = document.getElementById(`cp_father_section_${i}`);
+    if (section) {
+      section.querySelectorAll('.vf-btn').forEach(b => b.classList.remove('active'));
+      const tc = d.cp_father_alive === 'V' ? 'vivo' : 'finado';
+      section.querySelector('.vf-btn.' + tc)?.classList.add('active');
+    }
+  }
+  if (d.cp_dob) checkChildAge(i);
+}
+
+function eliminarHijo(idx) {
+  if (children.length <= 1) { alert('Debe haber al menos un hijo.'); return; }
+  for (let i = 0; i < children.length; i++) saveChildData(i);
+  children.splice(idx, 1);
+  for (let i = 0; i < children.length; i++) children[i].id = i;
+  document.getElementById('childPanels').innerHTML = '';
+  document.getElementById('childTabs').innerHTML = '';
+  for (let i = 0; i < children.length; i++) renderChildPanel(i);
+  for (let i = 0; i < children.length; i++) restoreChildData(i);
+  activeChildIdx = Math.min(activeChildIdx, children.length - 1);
+  renderChildTabs();
+  switchChildTab(activeChildIdx);
+  const warn = document.getElementById('warning7Children');
+  if (warn) warn.classList.toggle('show', children.length >= 7);
+}
+
+function toggleBirthOrder(i) {
+  const sel = document.getElementById(`cp_birth_type_${i}`).value;
+  document.getElementById(`cp_birth_order_wrap_${i}`).style.display = sel !== 'UNICO' ? 'flex' : 'none';
+}
+
+function checkChildAge(i) {
+  const dob = document.getElementById(`cp_dob_${i}`).value;
+  if (!dob || dob.length < 10) return;
+  const birth = parseDDMMYYYY(dob);
+  if (!birth) return;
+  const ageYears = (new Date() - birth) / (1000 * 60 * 60 * 24 * 365.25);
+  const notice = document.getElementById(`cp_age_notice_${i}`);
+  if (ageYears < 6) {
+    notice.style.display = 'block';
+    notice.innerHTML = '<strong>⚠ Menor de 6 años</strong> — Requiere: Constancia membretada y firmada por pediatra con foto del menor, ID del estado vigente o Pasaporte vigente.';
+  } else if (ageYears <= 18) {
+    notice.style.display = 'block';
+    notice.innerHTML = '<strong>⚠ Menor de 7–18 años</strong> — Requiere: Pasaporte estadounidense vigente, ID del estado, Credencial escolar con foto, Constancia de estudios oficial con foto sellada (no mayor a 6 meses).';
+  } else {
+    notice.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VALIDATION
+// ═══════════════════════════════════════════════════════════════
+const ABBREV_PATTERN = /\b(Ma|Gpe|Gdpe|Lic|Dr|Ing|Jr|Sr|Mt|Sta|Sto)\b\.?/i;
+
+function validateAll() {
+  const errors = [];
+  const noFatherFamily = document.getElementById('no_father_family')?.checked;
+  if (!noFatherFamily) {
+    ['f_first','f_paterno','f_dob'].forEach(id => {
+      if (!val(id)) errors.push(`Padre: campo "${label(id)}" requerido`);
+    });
+    if (val('f_first') && ABBREV_PATTERN.test(val('f_first')))
+      errors.push('Padre: nombre contiene abreviatura — escribir nombre completo');
+  }
+  ['m_first','m_paterno','m_dob'].forEach(id => {
+    if (!val(id)) errors.push(`Madre: campo "${label(id)}" requerido`);
+  });
+  if (val('m_first') && ABBREV_PATTERN.test(val('m_first')))
+    errors.push('Madre: nombre contiene abreviatura — escribir nombre completo');
+
+  const fdob = parseDDMMYYYY(val('f_dob'));
+  const mdob = parseDDMMYYYY(val('m_dob'));
+  if (val('f_dob') && !fdob) errors.push('Padre: fecha de nacimiento no válida (use dd/mm/aaaa)');
+  if (val('m_dob') && !mdob) errors.push('Madre: fecha de nacimiento no válida (use dd/mm/aaaa)');
+  if (fdob && fdob > new Date()) errors.push('Padre: fecha de nacimiento en el futuro');
+  if (mdob && mdob > new Date()) errors.push('Madre: fecha de nacimiento en el futuro');
+
+  if (!noFatherFamily) {
+    if (!val('abp_first')) errors.push('Abuelo Paterno: nombre requerido');
+    if (!val('abm_first')) errors.push('Abuela Paterna: nombre requerido');
+  }
+  if (!val('abmat_first')) errors.push('Abuelo Materno: nombre requerido');
+  if (!val('abmatm_first')) errors.push('Abuela Materna: nombre requerido');
+
+  // Default mother residence required
+  if (!val('m_res_state'))  errors.push('Domicilio predeterminado: Estado (EUA) requerido');
+  if (!val('m_res_county')) errors.push('Domicilio predeterminado: Condado requerido');
+  if (!val('m_res_city'))   errors.push('Domicilio predeterminado: Ciudad requerida');
+
+  if (children.length === 0) {
+    errors.push('Debe agregar al menos un hijo');
+  } else {
+    children.forEach((_, i) => {
+      const cFirst   = val(`cp_first_${i}`);
+      const cPaterno = val(`cp_paterno_${i}`);
+      const cDob     = val(`cp_dob_${i}`);
+      const fPaterno = val('f_paterno');
+      if (!cFirst)   errors.push(`Hijo ${i+1}: primer nombre requerido`);
+      if (!cPaterno) errors.push(`Hijo ${i+1}: apellido paterno requerido`);
+      if (!cDob)     errors.push(`Hijo ${i+1}: fecha de nacimiento requerida`);
+      const cTime = val(`cp_time_${i}`);
+      if (cTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(cTime))
+        errors.push(`Hijo ${i+1}: hora de nacimiento debe ser formato 24hr HH:MM (ej. 14:30)`);
+      const childFatherStatus = getChildFatherStatus(i);
+      const childHasNoFather = noFatherFamily || childFatherStatus === 'none';
+      const childHasDiffFather = !noFatherFamily && childFatherStatus === 'different';
+      if (!childHasNoFather && !childHasDiffFather) {
+        if (cPaterno && fPaterno && cPaterno.trim() !== fPaterno.trim())
+          errors.push(`Hijo ${i+1}: apellido paterno "${cPaterno}" no coincide con el del padre "${fPaterno}"`);
+      }
+      if (childHasDiffFather) {
+        if (!val(`cp_father_first_${i}`))   errors.push(`Hijo ${i+1}: padre — primer nombre requerido`);
+        if (!val(`cp_father_paterno_${i}`)) errors.push(`Hijo ${i+1}: padre — apellido paterno requerido`);
+        if (!val(`cp_father_dob_${i}`))     errors.push(`Hijo ${i+1}: padre — fecha de nacimiento requerida`);
+        const cpfDob = parseDDMMYYYY(val(`cp_father_dob_${i}`));
+        if (val(`cp_father_dob_${i}`) && !cpfDob)
+          errors.push(`Hijo ${i+1}: padre — fecha de nacimiento no válida`);
+      }
+      const childBirth = parseDDMMYYYY(cDob);
+      if (cDob && !childBirth) errors.push(`Hijo ${i+1}: fecha de nacimiento no válida (use dd/mm/aaaa)`);
+      if (childBirth) {
+        if (childBirth > new Date()) errors.push(`Hijo ${i+1}: fecha de nacimiento en el futuro`);
+        const effectiveFdob = childHasNoFather ? null
+          : childHasDiffFather ? parseDDMMYYYY(val(`cp_father_dob_${i}`))
+          : fdob;
+        if (effectiveFdob && childBirth < effectiveFdob)
+          errors.push(`Hijo ${i+1}: fecha de nacimiento anterior a la del padre`);
+        if (mdob && childBirth < mdob) errors.push(`Hijo ${i+1}: fecha de nacimiento anterior a la de la madre`);
+      }
+      if (!val(`cp_hospital_${i}`))  errors.push(`Hijo ${i+1}: nombre del hospital requerido`);
+      if (!val(`cp_attendant_${i}`)) errors.push(`Hijo ${i+1}: nombre del médico requerido`);
+      const sexSelected = document.querySelector(`input[name="cp_sex_${i}"]:checked`);
+      if (!sexSelected) errors.push(`Hijo ${i+1}: sexo requerido`);
+
+      // Per-child address override validation
+      const addrSameM = document.getElementById(`cp_addr_same_m_${i}`)?.checked !== false;
+      if (!addrSameM) {
+        if (!val(`cp_m_res_state_${i}`))  errors.push(`Hijo ${i+1}: domicilio madre — Estado requerido`);
+        if (!val(`cp_m_res_county_${i}`)) errors.push(`Hijo ${i+1}: domicilio madre — Condado requerido`);
+        if (!val(`cp_m_res_city_${i}`))   errors.push(`Hijo ${i+1}: domicilio madre — Ciudad requerida`);
+      }
+    });
+  }
+  return errors;
+}
+
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+function label(id) {
+  const map = {
+    f_first:'primer nombre', f_paterno:'apellido paterno', f_materno:'apellido materno', f_dob:'fecha de nacimiento',
+    m_first:'primer nombre', m_paterno:'apellido paterno', m_materno:'apellido materno', m_dob:'fecha de nacimiento',
+  };
+  return map[id] || id;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REVIEW BUILDER
+// ═══════════════════════════════════════════════════════════════
+function buildReview() {
+  const errors = validateAll();
+  const banner = document.getElementById('validationBanner');
+  const successBanner = document.getElementById('successBanner');
+  const genBtn = document.getElementById('submitBtn');
+  const errList = document.getElementById('errorList');
+  const submitErr = document.getElementById('submitError');
+  if (submitErr) submitErr.style.display = 'none';
+
+  if (errors.length > 0) {
+    banner.className = 'validation-banner error show';
+    successBanner.style.display = 'none';
+    errList.innerHTML = errors.map(e => `<li>${e}</li>`).join('');
+    genBtn.disabled = true;
+    genBtn.style.opacity = '0.4';
+  } else {
+    banner.className = 'validation-banner';
+    successBanner.style.display = 'flex';
+    genBtn.disabled = false;
+    genBtn.style.opacity = '1';
+    genBtn.textContent = currentCaseId ? '↑ Reenviar al Sistema' : '↑ Enviar al Sistema';
+  }
+
+  const rc = document.getElementById('reviewContent');
+  let html = '';
+  html += reviewCard('Padre', [
+    ['Nombre Completo', [val('f_first'), val('f_middle'), val('f_paterno'), val('f_materno')].filter(Boolean).join(' ')],
+    ['Fecha de Nacimiento', formatDateDisplay(val('f_dob'))],
+    ['Lugar de Nacimiento', val('f_place')],
+    ['Teléfono', val('f_phone')],
+  ]);
+  html += reviewCard('Madre', [
+    ['Nombre Completo (Soltera)', [val('m_first'), val('m_middle'), val('m_paterno'), val('m_materno')].filter(Boolean).join(' ')],
+    ['Fecha de Nacimiento', formatDateDisplay(val('m_dob'))],
+    ['Lugar de Nacimiento', val('m_place')],
+    ['Teléfono', val('m_phone')],
+    ['Email', val('family_email')],
+    ['Domicilio predeterminado al parto', `${val('m_res_state')}, ${val('m_res_county')}, ${val('m_res_city')}`],
+  ]);
+  children.forEach((_, i) => {
+    const sex = document.querySelector(`input[name="cp_sex_${i}"]:checked`);
+    const addrSameM = document.getElementById(`cp_addr_same_m_${i}`)?.checked !== false;
+    const addrSameF = document.getElementById(`cp_addr_same_f_${i}`)?.checked !== false;
+    html += reviewCard(`Hijo ${i+1} — ${val(`cp_first_${i}`)} ${val(`cp_paterno_${i}`)}`, [
+      ['Nombre Completo', [val(`cp_first_${i}`), val(`cp_paterno_${i}`), val(`cp_materno_${i}`)].filter(Boolean).join(' ')],
+      ['Fecha de Nacimiento', formatDateDisplay(val(`cp_dob_${i}`))],
+      ['Hora', val(`cp_time_${i}`)],
+      ['Sexo', sex ? sex.value : '—'],
+      ['Lugar', `${val(`cp_city_${i}`)}, ${val(`cp_county_${i}`)}, ${val(`cp_state_${i}`)}`],
+      ['Birth Number', val(`cp_birth_num_${i}`)],
+      ['Hospital', val(`cp_hospital_${i}`)],
+      ['Médico', val(`cp_attendant_${i}`)],
+      ['Domicilio madre al parto', addrSameM ? '(predeterminado)' : `${val(`cp_m_res_state_${i}`)}, ${val(`cp_m_res_city_${i}`)}`],
+      ['Domicilio padre al parto', addrSameF ? '(predeterminado)' : val(`cp_f_address_at_birth_${i}`)],
+    ]);
+  });
+  rc.innerHTML = html;
+}
+
+function reviewCard(title, rows) {
+  const rowsHtml = rows.map(([k, v]) => `
+    <tr>
+      <td class="field-name">${k}</td>
+      <td class="field-val ${!v ? 'missing' : ''}">${v || '— vacío'}</td>
+    </tr>
+  `).join('');
+  return `
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header"><div class="card-title">${title}</div></div>
+      <div class="card-body" style="padding:0">
+        <table class="review-table"><tbody>${rowsHtml}</tbody></table>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATE / TIME HELPERS
+// ═══════════════════════════════════════════════════════════════
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  return dateStr.trim();
+}
+function formatDateInput(el) {
+  let v = el.value.replace(/[^0-9]/g, '');
+  if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
+  if (v.length > 5) v = v.slice(0,5) + '/' + v.slice(5);
+  el.value = v.slice(0,10);
+}
+function formatTimeInput(el) {
+  let v = el.value.replace(/[^0-9]/g, '');
+  if (v.length >= 2) {
+    let hh = parseInt(v.slice(0,2), 10);
+    if (hh > 23) hh = 23;
+    v = String(hh).padStart(2,'0') + v.slice(2);
+  }
+  if (v.length >= 4) {
+    let mm = parseInt(v.slice(2,4), 10);
+    if (mm > 59) mm = 59;
+    v = v.slice(0,2) + String(mm).padStart(2,'0');
+  }
+  if (v.length > 2) v = v.slice(0,2) + ':' + v.slice(2);
+  el.value = v.slice(0,5);
+}
+function parseDDMMYYYY(str) {
+  if (!str || str.length < 10) return null;
+  const parts = str.split('/');
+  if (parts.length !== 3) return null;
+  const d = parseInt(parts[0],10), m = parseInt(parts[1],10), y = parseInt(parts[2],10);
+  if (isNaN(d)||isNaN(m)||isNaN(y)) return null;
+  const dt = new Date(y, m-1, d);
+  if (dt.getFullYear()!==y || dt.getMonth()!==m-1 || dt.getDate()!==d) return null;
+  return dt;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATA COLLECTION
+// ═══════════════════════════════════════════════════════════════
+function collectFormData() {
+  const today = new Date();
+  const todayStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+  const comparece = document.querySelector('input[name="comparece"]:checked');
+
+  const family = {
+    fecha_solicitud: todayStr,
+    father_full:     [val('f_first'), val('f_middle'), val('f_paterno'), val('f_materno')].filter(Boolean).join(' '),
+    father_first:    val('f_first'),
+    father_middle:   val('f_middle'),
+    father_paterno:  val('f_paterno'),
+    father_materno:  val('f_materno'),
+    father_dob:      formatDateDisplay(val('f_dob')),
+    father_place:    val('f_place'),
+    father_birthplace: val('f_birthplace'),
+    father_occupation: val('f_occupation'),
+    father_address:  val('f_address'),
+    father_zip:      val('f_zip'),
+    father_phone:    val('f_phone'),
+    father_age:      val('f_age'),
+    father_alive:    val('f_alive'),
+    mother_full:     [val('m_first'), val('m_middle'), val('m_paterno'), val('m_materno')].filter(Boolean).join(' '),
+    mother_first:    val('m_first'),
+    mother_middle:   val('m_middle'),
+    mother_paterno:  val('m_paterno'),
+    mother_materno:  val('m_materno'),
+    mother_dob:      formatDateDisplay(val('m_dob')),
+    mother_place:    val('m_place'),
+    mother_birthplace: val('m_birthplace'),
+    mother_occupation: val('m_occupation'),
+    mother_address:  val('m_address'),
+    mother_zip:      val('m_zip'),
+    mother_phone:    val('m_phone'),
+    mother_age:      val('m_age'),
+    mother_alive:    val('m_alive'),
+    // Default residence (used by children unless overridden)
+    mother_res_state:  val('m_res_state'),
+    mother_res_county: val('m_res_county'),
+    mother_res_city:   val('m_res_city'),
+    mother_res_street: val('m_res_street'),
+    mother_res_zip:    val('m_res_zip'),
+    inside_city_limits: val('inside_city_limits') || 'SI',
+    mailing_address:   val('mailing_address') || 'SAME',
+    abp_name:    [val('abp_first'), val('abp_pat'), val('abp_mat')].filter(Boolean).join(' '),
+    abp_place:   val('abp_place'),
+    abp_alive:   val('abp_alive'),
+    abm_name:    [val('abm_first'), val('abm_pat'), val('abm_mat')].filter(Boolean).join(' '),
+    abm_place:   val('abm_place'),
+    abm_alive:   val('abm_alive'),
+    abp_address: val('abp_address'),
+    abp_zip:     val('abp_zip'),
+    abm_address: val('abm_address'),
+    abm_zip:     val('abm_zip'),
+    abmat_name:   [val('abmat_first'), val('abmat_pat'), val('abmat_mat')].filter(Boolean).join(' '),
+    abmat_place:  val('abmat_place'),
+    abmat_alive:  val('abmat_alive'),
+    abmatm_name:  [val('abmatm_first'), val('abmatm_pat'), val('abmatm_mat')].filter(Boolean).join(' '),
+    abmatm_place: val('abmatm_place'),
+    abmatm_alive: val('abmatm_alive'),
+    abmat_address:  val('abmat_address'),
+    abmat_zip:      val('abmat_zip'),
+    abmatm_address: val('abmatm_address'),
+    abmatm_zip:     val('abmatm_zip'),
+    email:             val('family_email'),
+    registrado_phone:  val('registrado_phone'),
+    comparece:         comparece ? comparece.value : 'AMBOS',
+  };
+
+  // If no father for this family, blank out father + abp fields
+  const noFatherFamily = document.getElementById('no_father_family')?.checked;
+  if (noFatherFamily) {
+    family.father_full = ''; family.father_first = ''; family.father_middle = '';
+    family.father_paterno = ''; family.father_materno = '';
+    family.father_dob = ''; family.father_alive = '';
+    family.father_age = ''; family.father_place = ''; family.father_birthplace = '';
+    family.father_occupation = ''; family.father_address = '';
+    family.father_zip = ''; family.father_phone = '';
+    family.abp_name = ''; family.abp_place = ''; family.abp_alive = '';
+    family.abm_name = ''; family.abm_place = ''; family.abm_alive = '';
+    family.abp_address = ''; family.abp_zip = '';
+  }
+
+  const childrenData = children.map((_, i) => {
+    const sex = document.querySelector(`input[name="cp_sex_${i}"]:checked`);
+    const dobRaw = val(`cp_dob_${i}`);
+    const dateRegRaw = val(`cp_date_reg_${i}`);
+    const childFatherStatus = getChildFatherStatus(i);
+    const noFatherFamilyCDC = document.getElementById('no_father_family')?.checked;
+
+    const childData = {
+      child_first:   val(`cp_first_${i}`),
+      child_middle:  val(`cp_middle_${i}`),
+      child_paterno: val(`cp_paterno_${i}`),
+      child_materno: val(`cp_materno_${i}`),
+      child_dob:     formatDateDisplay(dobRaw),
+      child_birth_time: val(`cp_time_${i}`),
+      child_sex:     sex ? sex.value : '',
+      child_place_city:   val(`cp_city_${i}`),
+      child_place_county: val(`cp_county_${i}`),
+      child_place_state:  val(`cp_state_${i}`),
+      estado:        val(`cp_estado_${i}`) || val(`cp_state_${i}`),
+      birth_number:  val(`cp_birth_num_${i}`),
+      birth_type:    val(`cp_birth_type_${i}`),
+      birth_order:   val(`cp_birth_order_${i}`),
+      birth_facility_type: val(`cp_facility_type_${i}`),
+      hospital_name: val(`cp_hospital_${i}`),
+      attendant_name: val(`cp_attendant_${i}`),
+      attendant_type: val(`cp_attendant_type_${i}`),
+      certifier_name: val(`cp_certifier_name_${i}`),
+      certifier_date: val(`cp_certifier_date_${i}`),
+      certifier_type: val(`cp_certifier_type_${i}`),
+      local_file_number: val(`cp_local_file_${i}`),
+      date_received_registrar: formatDateDisplay(dateRegRaw),
+    };
+
+    // Per-child mother residence (Option B: use override if set, else family default)
+    const addrSameM = document.getElementById(`cp_addr_same_m_${i}`)?.checked !== false;
+    childData.mother_res_state   = addrSameM ? val('m_res_state')   : (val(`cp_m_res_state_${i}`)  || val('m_res_state'));
+    childData.mother_res_county  = addrSameM ? val('m_res_county')  : (val(`cp_m_res_county_${i}`) || val('m_res_county'));
+    childData.mother_res_city    = addrSameM ? val('m_res_city')    : (val(`cp_m_res_city_${i}`)   || val('m_res_city'));
+    childData.mother_res_street  = addrSameM ? val('m_res_street')  : (val(`cp_m_res_street_${i}`) || val('m_res_street'));
+    childData.mother_res_zip     = addrSameM ? val('m_res_zip')     : (val(`cp_m_res_zip_${i}`)    || val('m_res_zip'));
+    childData.inside_city_limits = addrSameM ? (val('inside_city_limits') || 'SI') : (val(`cp_inside_city_limits_${i}`) || 'SI');
+    childData.mailing_address    = addrSameM ? (val('mailing_address') || 'SAME') : (val(`cp_mailing_address_${i}`) || 'SAME');
+
+    // Per-child father address at birth (overrides family father_address for Solicitud)
+    if (!noFatherFamilyCDC && childFatherStatus !== 'none') {
+      const addrSameF = document.getElementById(`cp_addr_same_f_${i}`)?.checked !== false;
+      if (!addrSameF) {
+        childData.father_address = val(`cp_f_address_at_birth_${i}`) || val('f_address');
+        childData.father_zip     = val(`cp_f_zip_at_birth_${i}`)     || val('f_zip');
+      }
+    }
+
+    // Handle father override per child
+    if (!noFatherFamilyCDC && childFatherStatus === 'different') {
+      const cf_first   = val(`cp_father_first_${i}`);
+      const cf_paterno = val(`cp_father_paterno_${i}`);
+      const cf_materno = val(`cp_father_materno_${i}`);
+      const cf_middle  = val(`cp_father_middle_${i}`);
+      childData.father_first      = cf_first;
+      childData.father_middle     = cf_middle;
+      childData.father_paterno    = cf_paterno;
+      childData.father_materno    = cf_materno;
+      childData.father_full       = [cf_first, cf_middle, cf_paterno, cf_materno].filter(Boolean).join(' ');
+      childData.father_dob        = formatDateDisplay(val(`cp_father_dob_${i}`));
+      childData.father_place      = val(`cp_father_place_${i}`);
+      childData.father_birthplace = val(`cp_father_birthplace_${i}`);
+      childData.father_occupation = val(`cp_father_occupation_${i}`);
+      childData.father_age        = val(`cp_father_age_${i}`);
+      childData.father_alive      = document.getElementById(`cp_father_${i}_alive`)?.value || 'V';
+      childData.father_address    = val(`cp_father_address_${i}`);
+      childData.father_zip        = val(`cp_father_zip_${i}`);
+      childData.father_phone      = val(`cp_father_phone_${i}`);
+    } else if (noFatherFamilyCDC || childFatherStatus === 'none') {
+      childData.father_full = ''; childData.father_first = ''; childData.father_middle = '';
+      childData.father_paterno = ''; childData.father_materno = '';
+      childData.father_dob = ''; childData.father_alive = '';
+      childData.father_age = ''; childData.father_place = ''; childData.father_birthplace = '';
+      childData.father_occupation = ''; childData.father_address = '';
+      childData.father_zip = ''; childData.father_phone = '';
+      childData.abp_name = ''; childData.abp_place = ''; childData.abp_alive = '';
+      childData.abm_name = ''; childData.abm_place = ''; childData.abm_alive = '';
+      childData.abp_address = ''; childData.abp_zip = '';
+    }
+    return childData;
+  });
+
+  return { family, children: childrenData };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUBMIT TO SYSTEM (replaces JSON download)
+// ═══════════════════════════════════════════════════════════════
+async function submitToSystem() {
+  if (!GAS_CONFIGURED) {
+    alert('El sistema no está configurado aún.\n\nEdite el archivo HTML y reemplace los valores en GAS_CONFIG con su URL de Apps Script y token secreto.');
+    return;
+  }
+  const errors = validateAll();
+  if (errors.length > 0) {
+    alert('Hay errores en el formulario. Por favor corrija antes de continuar.');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  const errDiv = document.getElementById('submitError');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+  if (errDiv) errDiv.style.display = 'none';
+
+  try {
+    const data = collectFormData();
+    const payload = {
+      token:       GAS_CONFIG.SECRET_TOKEN,
+      action:      currentCaseId ? 'updateCase' : 'submitCase',
+      app_version: GAS_CONFIG.APP_VERSION,
+      batch:       1,
+      family:      data.family,
+      children:    data.children,
+    };
+    if (currentCaseId) payload.caseId = currentCaseId;
+
+    const response = await fetch(GAS_CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+      redirect: 'follow',
+    });
+
+    let result;
+    try { result = await response.json(); } catch(e) {
+      throw new Error('Respuesta inesperada del servidor. Verifique en Google Sheets si el caso fue guardado.');
+    }
+
+    if (result.ok) {
+      currentCaseId     = result.caseId;
+      currentCaseStatus = result.status;
+
+      // Show step 4 — submitted state
+      document.getElementById('result-submitted').style.display = 'block';
+      document.getElementById('result-approved').style.display  = 'none';
+      document.getElementById('resultCaseId').textContent       = result.caseId;
+      document.getElementById('resultMessage').textContent      = payload.action === 'updateCase'
+        ? 'Caso reenviado — el POC recibirá notificación para nueva revisión.'
+        : 'Caso enviado al sistema. El POC ha sido notificado por correo electrónico.';
+      goToStep(4);
+    } else {
+      throw new Error(result.error || 'Error desconocido del servidor');
+    }
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = currentCaseId ? '↑ Reenviar al Sistema' : '↑ Enviar al Sistema'; }
+    if (errDiv) {
+      errDiv.style.display = 'block';
+      errDiv.textContent   = 'Error al enviar: ' + err.message + '. Revise su conexión y vuelva a intentar.';
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOCAL JSON FALLBACK (emergency offline use)
+// ═══════════════════════════════════════════════════════════════
+function generateFormsLocalJSON() {
+  const errors = validateAll();
+  if (errors.length > 0) {
+    alert('Hay errores en el formulario. Por favor corrija antes de continuar.');
+    return;
+  }
+  const data = collectFormData();
+  const jsonBlob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const jsonUrl  = URL.createObjectURL(jsonBlob);
+  const fp = data.family.father_paterno || 'PADRE';
+  const mp = data.family.mother_paterno || 'MADRE';
+  const folderName = `${fp}_${mp}`;
+  const a = document.createElement('a');
+  a.href = jsonUrl;
+  a.download = `${folderName}_datos.json`;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOAD CASE FROM API (URL param: ?case=CASEID)
+// ═══════════════════════════════════════════════════════════════
+async function loadCase(caseId, editMode) {
+  if (!GAS_CONFIGURED) {
+    console.warn('GAS_CONFIG not set — cannot load case from API');
+    return;
+  }
+  const loadBanner = document.getElementById('loadingBanner');
+  const loadText   = document.getElementById('loadingText');
+  if (loadBanner) { loadBanner.className = 'loading-banner show'; }
+  if (loadText)   loadText.textContent = 'Cargando caso ' + caseId + '...';
+
+  try {
+    const url = GAS_CONFIG.APPS_SCRIPT_URL
+      + '?action=getCase'
+      + '&caseId='  + encodeURIComponent(caseId)
+      + '&token='   + encodeURIComponent(GAS_CONFIG.SECRET_TOKEN);
+
+    const response = await fetch(url, { redirect: 'follow' });
+    const result   = await response.json();
+
+    if (!result.ok) {
+      if (loadBanner) loadBanner.className = 'loading-banner';
+      alert('No se pudo cargar el caso: ' + (result.error || 'error desconocido'));
+      return;
+    }
+
+    currentCaseId     = caseId;
+    currentCaseStatus = result.status;
+    if (loadBanner) loadBanner.className = 'loading-banner';
+
+    if (result.status === 'APPROVED' || result.status === 'COMPLETED') {
+      populateStep4Approved(result);
+      goToStep(4);
+      return;
+    }
+
+    populateFormFromCase(result, editMode);
+
+  } catch (err) {
+    if (loadBanner) loadBanner.className = 'loading-banner';
+    alert('Error al cargar el caso: ' + err.message);
+  }
+}
+
+function populateStep4Approved(caseData) {
+  document.getElementById('result-submitted').style.display = 'none';
+  document.getElementById('result-approved').style.display  = 'block';
+  document.getElementById('approvedCaseId').textContent     = caseData.caseId;
+  const driveEl = document.getElementById('approvedDriveLink');
+  if (driveEl && caseData.driveFolder) {
+    driveEl.innerHTML = `<a href="${caseData.driveFolder}" target="_blank" style="color:var(--us-blue);">Abrir carpeta Drive ↗</a>`;
+  }
+}
+
+function populateFormFromCase(caseData, editMode) {
+  const d      = caseData.data  || {};
+  const family = d.family       || {};
+  const kidsData = d.children   || [];
+
+  const set = (id, v) => {
+    if (v === undefined || v === null) return;
+    const el = document.getElementById(id);
+    if (el) el.value = v;
+  };
+
+  // Father
+  set('f_first',      family.father_first);
+  set('f_middle',     family.father_middle);
+  set('f_paterno',    family.father_paterno);
+  set('f_materno',    family.father_materno);
+  set('f_dob',        family.father_dob);
+  set('f_place',      family.father_place);
+  set('f_birthplace', family.father_birthplace);
+  set('f_occupation', family.father_occupation);
+  set('f_age',        family.father_age);
+  set('f_address',    family.father_address);
+  set('f_zip',        family.father_zip);
+  set('f_phone',      family.father_phone);
+  if (family.father_alive) setVFProgrammatic('f', family.father_alive);
+
+  // Mother
+  set('m_first',      family.mother_first);
+  set('m_middle',     family.mother_middle);
+  set('m_paterno',    family.mother_paterno);
+  set('m_materno',    family.mother_materno);
+  set('m_dob',        family.mother_dob);
+  set('m_place',      family.mother_place);
+  set('m_birthplace', family.mother_birthplace);
+  set('m_occupation', family.mother_occupation);
+  set('m_age',        family.mother_age);
+  set('m_address',    family.mother_address);
+  set('m_zip',        family.mother_zip);
+  set('m_phone',      family.mother_phone);
+  if (family.mother_alive) setVFProgrammatic('m', family.mother_alive);
+  set('family_email', family.email);
+
+  // Default residence
+  set('m_res_state',        family.mother_res_state);
+  set('m_res_county',       family.mother_res_county);
+  set('m_res_city',         family.mother_res_city);
+  set('m_res_street',       family.mother_res_street);
+  set('m_res_zip',          family.mother_res_zip);
+  set('inside_city_limits', family.inside_city_limits);
+  set('mailing_address',    family.mailing_address);
+
+  // Grandparents
+  if (family.abp_name) set('abp_first', family.abp_name);
+  set('abp_place', family.abp_place);
+  if (family.abp_alive) setVFProgrammatic('abp', family.abp_alive);
+  if (family.abm_name) set('abm_first', family.abm_name);
+  set('abm_place', family.abm_place);
+  if (family.abm_alive) setVFProgrammatic('abm', family.abm_alive);
+  set('abp_address', family.abp_address);
+  set('abp_zip',     family.abp_zip);
+  set('abm_address', family.abm_address);
+  set('abm_zip',     family.abm_zip);
+
+  if (family.abmat_name) set('abmat_first', family.abmat_name);
+  set('abmat_place', family.abmat_place);
+  if (family.abmat_alive) setVFProgrammatic('abmat', family.abmat_alive);
+  if (family.abmatm_name) set('abmatm_first', family.abmatm_name);
+  set('abmatm_place', family.abmatm_place);
+  if (family.abmatm_alive) setVFProgrammatic('abmatm', family.abmatm_alive);
+  set('abmat_address',  family.abmat_address);
+  set('abmat_zip',      family.abmat_zip);
+  set('abmatm_address', family.abmatm_address);
+  set('abmatm_zip',     family.abmatm_zip);
+
+  // Comparece
+  set('registrado_phone', family.registrado_phone);
+  if (family.comparece) {
+    const r = document.querySelector(`input[name="comparece"][value="${family.comparece}"]`);
+    if (r) r.checked = true;
+  }
+
+  // No father toggle
+  if (!family.father_first && !family.father_full) {
+    const nf = document.getElementById('no_father_family');
+    if (nf) { nf.checked = true; toggleNoFatherFamily(); }
+  }
+
+  // Rebuild child panels
+  children = [];
+  document.getElementById('childPanels').innerHTML = '';
+
+  kidsData.forEach((child, i) => {
+    children.push({ id: i });
+    renderChildPanel(i);
+
+    const s2 = (id, v) => {
+      if (v === undefined || v === null) return;
+      const el = document.getElementById(id);
+      if (el) el.value = v;
+    };
+
+    s2(`cp_first_${i}`,          child.child_first);
+    s2(`cp_paterno_${i}`,        child.child_paterno);
+    s2(`cp_materno_${i}`,        child.child_materno);
+    s2(`cp_middle_${i}`,         child.child_middle);
+    s2(`cp_dob_${i}`,            child.child_dob);
+    s2(`cp_time_${i}`,           child.child_birth_time);
+    s2(`cp_birth_type_${i}`,     child.birth_type);
+    s2(`cp_birth_order_${i}`,    child.birth_order);
+    s2(`cp_city_${i}`,           child.child_place_city);
+    s2(`cp_county_${i}`,         child.child_place_county);
+    s2(`cp_state_${i}`,          child.child_place_state);
+    s2(`cp_estado_${i}`,         child.estado);
+    s2(`cp_birth_num_${i}`,      child.birth_number);
+    s2(`cp_local_file_${i}`,     child.local_file_number);
+    s2(`cp_date_reg_${i}`,       child.date_received_registrar);
+    s2(`cp_facility_type_${i}`,  child.birth_facility_type);
+    s2(`cp_hospital_${i}`,       child.hospital_name);
+    s2(`cp_attendant_${i}`,      child.attendant_name);
+    s2(`cp_attendant_type_${i}`, child.attendant_type);
+    s2(`cp_certifier_name_${i}`, child.certifier_name);
+    s2(`cp_certifier_date_${i}`, child.certifier_date);
+    s2(`cp_certifier_type_${i}`, child.certifier_type);
+
+    if (child.child_sex) {
+      const sexR = document.querySelector(`input[name="cp_sex_${i}"][value="${child.child_sex}"]`);
+      if (sexR) sexR.checked = true;
+    }
+    if (child.birth_type && child.birth_type !== 'UNICO') {
+      const wrap = document.getElementById(`cp_birth_order_wrap_${i}`);
+      if (wrap) wrap.style.display = 'flex';
+    }
+
+    // Per-child address — check if differs from family default
+    const defaultResState = family.mother_res_state || '';
+    const childResState   = child.mother_res_state  || '';
+    if (childResState && childResState !== defaultResState) {
+      const cbM = document.getElementById(`cp_addr_same_m_${i}`);
+      if (cbM) { cbM.checked = false; toggleAddrOverride('m', i); }
+      s2(`cp_m_res_state_${i}`,        child.mother_res_state);
+      s2(`cp_m_res_county_${i}`,       child.mother_res_county);
+      s2(`cp_m_res_city_${i}`,         child.mother_res_city);
+      s2(`cp_m_res_street_${i}`,       child.mother_res_street);
+      s2(`cp_m_res_zip_${i}`,          child.mother_res_zip);
+      s2(`cp_inside_city_limits_${i}`, child.inside_city_limits);
+      s2(`cp_mailing_address_${i}`,    child.mailing_address);
+    }
+
+    const defaultFAddr = family.father_address || '';
+    const childFAddr   = child.father_address  || '';
+    if (childFAddr && childFAddr !== defaultFAddr) {
+      const cbF = document.getElementById(`cp_addr_same_f_${i}`);
+      if (cbF) { cbF.checked = false; toggleAddrOverride('f', i); }
+      s2(`cp_f_address_at_birth_${i}`, child.father_address);
+      s2(`cp_f_zip_at_birth_${i}`,     child.father_zip);
+    }
+
+    // Father status
+    if (!child.father_first && !child.father_full) {
+      const noneR = document.querySelector(`input[name="cp_father_status_${i}"][value="none"]`);
+      if (noneR) { noneR.checked = true; toggleChildFatherStatus(i); }
+    }
+
+    if (child.child_dob) checkChildAge(i);
+  });
+
+  renderChildTabs();
+  if (kidsData.length > 0) switchChildTab(0);
+
+  // Show edit mode banner
+  if (editMode && caseData.pocNotes) {
+    const banner   = document.getElementById('editModeBanner');
+    const notesEl  = document.getElementById('pocNotesText');
+    const caseIdEl = document.getElementById('editCaseIdLabel');
+    if (banner)  banner.className = 'edit-mode-banner show';
+    if (notesEl) notesEl.textContent = caseData.pocNotes;
+    if (caseIdEl) caseIdEl.textContent = 'Caso ID: ' + caseData.caseId;
+  }
+
+  // Update header subtitle
+  const sub = document.getElementById('headerSub');
+  if (sub && caseData.caseId) {
+    sub.textContent = 'Editando caso: ' + caseData.caseId + ' · ' + (caseData.familyLabel || '');
+  }
+
+  isEditMode = true;
+  goToStep(1);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════════════════════════
+function resetApp() {
+  if (!confirm('¿Iniciar nueva sesión? Se perderán todos los datos actuales.')) return;
+  children         = [];
+  activeChildIdx   = 0;
+  currentCaseId    = null;
+  currentCaseStatus = null;
+  isEditMode       = false;
+
+  document.getElementById('childPanels').innerHTML = '';
+  document.getElementById('childTabs').innerHTML   = '';
+  document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="number"]')
+    .forEach(el => el.value = '');
+  // Reset vf-toggles to Vivo defaults
+  ['f','m','abp','abm','abmat','abmatm'].forEach(p => setVFProgrammatic(p, 'V'));
+  // Reset comparece
+  const ambosr = document.querySelector('input[name="comparece"][value="AMBOS"]');
+  if (ambosr) ambosr.checked = true;
+  // Reset no-father toggle
+  const nf = document.getElementById('no_father_family');
+  if (nf) { nf.checked = false; toggleNoFatherFamily(); }
+  // Hide banners
+  const editBanner = document.getElementById('editModeBanner');
+  if (editBanner) editBanner.className = 'edit-mode-banner';
+  const warn7 = document.getElementById('warning7Children');
+  if (warn7) warn7.classList.remove('show');
+  // Reset header
+  const sub = document.getElementById('headerSub');
+  if (sub) sub.textContent = 'Consulado de México en Albuquerque · Uso interno';
+
+  addChild();
+  goToStep(1);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Parse URL parameters
+  const params   = new URLSearchParams(window.location.search);
+  const caseId   = params.get('case');
+  const editMode = params.get('edit') === 'true';
+  const pocMode  = params.get('mode') === 'poc';
+
+  if (pocMode) {
+    // Build 5 stub — POC mode coming next
+    document.getElementById('headerSub').textContent = 'Modo POC — Panel de revisión (próximamente)';
+    addChild();
+    return;
+  }
+
+  addChild(); // Always start with one child panel
+
+  if (caseId && GAS_CONFIGURED) {
+    // Load case from API — runs async after DOM is ready
+    loadCase(caseId, editMode);
+  }
+
+  // Warn if GAS not yet configured
+  if (!GAS_CONFIGURED) {
+    const sub = document.getElementById('headerSub');
+    if (sub) sub.textContent = '⚠ API no configurada — ver DEPLOYMENT_GUIDE.md · Uso interno';
+  }
+});
+</script>
+</body>
+</html>
