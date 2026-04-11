@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Doble Ciudadanía — Generador de Formularios</title>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
 :root {
   --mx-green: #006847;
@@ -993,11 +994,29 @@ body {
         </div>
       </div>
       <div class="download-grid" id="downloadGrid"></div>
-      <!-- Build 4 placeholder: PDF generation button -->
-      <div style="padding:16px 20px; background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; max-width:500px; margin:0 auto 24px; font-size:12px; color:#1e40af;">
-        <strong>Generación de PDFs (Build 4)</strong><br>
-        El botón para generar y subir PDFs directamente al Drive estará disponible en la próxima actualización.
-        Por ahora, use el script Python local: <code>python fill_forms.py datos.json</code>
+
+      <!-- PDF GENERATION UI (Build 4) -->
+      <div id="pdfGenSection" style="max-width:600px; margin:0 auto 24px;">
+        <button id="generatePDFsBtn" onclick="generateAllPDFs()"
+                style="background:var(--success); color:#fff; border:none; border-radius:8px;
+                       padding:14px 32px; font-size:15px; font-weight:700; cursor:pointer;
+                       width:100%; margin-bottom:16px; transition:all .15s;">
+          📄 Generar y Subir PDFs al Drive
+        </button>
+
+        <!-- Progress section (hidden until button clicked) -->
+        <div id="pdfProgress" style="display:none;">
+          <div id="pdfStatusText" style="font-size:13px; color:var(--muted); margin-bottom:12px; text-align:center;"></div>
+          <div id="pdfProgressList" style="display:flex; flex-direction:column; gap:8px;"></div>
+          <div id="pdfAllDone" style="display:none; margin-top:16px; padding:14px 18px;
+               background:#f0fdf4; border:1px solid #86efac; border-radius:8px;
+               text-align:center; font-size:14px; font-weight:700; color:var(--success);">
+            ✅ Todos los PDFs generados y guardados en Drive.
+          </div>
+          <div id="pdfError" style="display:none; margin-top:12px; padding:12px 14px;
+               background:#fef2f2; border:1px solid #fca5a5; border-radius:6px;
+               font-size:12px; color:var(--danger);"></div>
+        </div>
       </div>
       <button class="btn btn-secondary" onclick="resetApp()" style="margin:0 auto;">↺ Nueva Sesión</button>
     </div>
@@ -1026,6 +1045,7 @@ let activeChildIdx = 0;
 let currentStep = 1;
 let currentCaseId = null;
 let currentCaseStatus = null;
+let currentCaseData = null;
 let isEditMode = false;
 
 // ═══════════════════════════════════════════════════════════════
@@ -2279,12 +2299,37 @@ async function loadCase(caseId, editMode) {
 }
 
 function populateStep4Approved(caseData) {
+  currentCaseData = caseData;
   document.getElementById('result-submitted').style.display = 'none';
   document.getElementById('result-approved').style.display  = 'block';
   document.getElementById('approvedCaseId').textContent     = caseData.caseId;
   const driveEl = document.getElementById('approvedDriveLink');
   if (driveEl && caseData.driveFolder) {
     driveEl.innerHTML = `<a href="${caseData.driveFolder}" target="_blank" style="color:var(--us-blue);">Abrir carpeta Drive ↗</a>`;
+  }
+  // Pre-build progress rows
+  const list = document.getElementById('pdfProgressList');
+  if (list && caseData.data && caseData.data.children) {
+    list.innerHTML = caseData.data.children.map((child, i) => {
+      const name = (child.child_first || `Hijo ${i+1}`);
+      return `
+        <div id="pdfRow_${i}" style="background:var(--surface); border:1px solid var(--border);
+             border-radius:6px; padding:10px 14px; font-size:12px;">
+          <div style="font-weight:700; margin-bottom:6px; color:var(--text);">
+            Hijo ${i+1}: ${name} ${child.child_paterno || ''}
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <span id="pdfSolic_${i}" style="padding:3px 10px; border-radius:100px;
+                  border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:11px;">
+              ⏳ SOLICITUD
+            </span>
+            <span id="pdfTrad_${i}" style="padding:3px 10px; border-radius:100px;
+                  border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:11px;">
+              ⏳ TRADUCCIÓN
+            </span>
+          </div>
+        </div>`;
+    }).join('');
   }
 }
 
@@ -2542,7 +2587,614 @@ window.addEventListener('DOMContentLoaded', () => {
     const sub = document.getElementById('headerSub');
     if (sub) sub.textContent = '⚠ API no configurada — ver DEPLOYMENT_GUIDE.md · Uso interno';
   }
-});
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD 4 — PDF GENERATION (pdf-lib)
+// Direct port of fill_forms.py coordinate system.
+// Solicitud:  draw directly on template page (same coords as Python overlay)
+// Traduccion: built from scratch, Letter 612×792
+// ═══════════════════════════════════════════════════════════════
+
+const SOLICITUD_TEMPLATE_URL =
+  'https://raw.githubusercontent.com/chriscanton24-dot/doble-ciudadania/main/SOLICITUD_DOBLE_NACIONALIDAD_2025_-3.pdf';
+
+let _cachedTemplateBytes = null;
+
+async function fetchSolicitudTemplate() {
+  if (_cachedTemplateBytes) return _cachedTemplateBytes;
+  const resp = await fetch(SOLICITUD_TEMPLATE_URL);
+  if (!resp.ok) throw new Error('No se pudo descargar el template de Solicitud (' + resp.status + ')');
+  const ab = await resp.arrayBuffer();
+  _cachedTemplateBytes = new Uint8Array(ab);
+  return _cachedTemplateBytes;
+}
+
+// ── Drawing helpers (mirror fill_forms.py) ──────────────────────
+
+const _BLK = PDFLib ? PDFLib.rgb(0,0,0) : null;
+
+function _getBlack() { return PDFLib.rgb(0,0,0); }
+
+function _clipStr(text, font, size, maxW) {
+  if (!maxW || !text) return text;
+  while (font.widthOfTextAtSize(text, size) > maxW && text.length > 1) {
+    text = text.slice(0, -1);
+  }
+  return text;
+}
+
+// draw() equivalent — for Solicitud overlay (coordinates are exact baseline)
+function _draw(page, x, y, text, font, size, upper, maxW) {
+  if (!text) return;
+  text = String(text).trim();
+  if (!text) return;
+  if (upper !== false) text = text.toUpperCase();
+  if (maxW) text = _clipStr(text, font, size, maxW);
+  page.drawText(text, {x, y, size, font, color: _getBlack()});
+}
+
+// _lbl() equivalent — labels in Traduccion
+function _lbl(page, x, y, text, fonts, {size=8, bold=false, italic=false, maxW=null} = {}) {
+  const font = bold ? fonts.hb : italic ? fonts.hi : fonts.h;
+  _draw(page, x, y, text, font, size, false, maxW);
+}
+
+// _data() equivalent — data fields sit 3pts above the underline
+function _dat(page, x, y, text, fonts, {size=8.5, upper=true, maxW=null} = {}) {
+  if (!text) return;
+  text = String(text).trim();
+  if (!text) return;
+  if (upper) text = text.toUpperCase();
+  if (maxW) text = _clipStr(text, fonts.tr, size, maxW);
+  page.drawText(text, {x, y: y + 3, size, font: fonts.tr, color: _getBlack()});
+}
+
+// Line helpers
+function _hLine(page, x1, y, x2, thick) {
+  page.drawLine({start:{x:x1,y}, end:{x:x2,y}, thickness:thick||0.5, color:_getBlack()});
+}
+function _hLineFull(page, y, thick) {
+  _hLine(page, 25, y, 587, thick||0.5);
+}
+function _vLine(page, x, y1, y2, thick) {
+  page.drawLine({start:{x,y:y1}, end:{x,y:y2}, thickness:thick||0.5, color:_getBlack()});
+}
+function _box(page, x, y, w, h, bw) {
+  page.drawRectangle({x, y, width:w, height:h, borderWidth:bw||0.5, borderColor:_getBlack()});
+}
+
+// Checkbox: small box optionally with X
+function _chk(page, x, y, checked, fonts) {
+  page.drawRectangle({x, y:y+1, width:8, height:8, borderWidth:0.6, borderColor:_getBlack()});
+  if (checked) page.drawText('X', {x:x+1, y:y+1, size:10, font:fonts.tb, color:_getBlack()});
+}
+
+// ── Solicitud Page 1 ─────────────────────────────────────────────────────────
+function _drawSolicitudP1(page, d, F) {
+  const tr = F.tr, tb = F.tb;
+
+  _draw(page, 494, 659, d.fecha_solicitud||'', tr, 8, false, null);
+
+  const childGiven = [d.child_first, d.child_middle].filter(Boolean).join(' ');
+  _draw(page, 135, 634, childGiven,            tr, 8, true, 155);
+  _draw(page, 305, 634, d.child_paterno||'',   tr, 8, true, 115);
+  _draw(page, 437, 634, d.child_materno||'',   tr, 8, true, 105);
+
+  _draw(page, 245, 612, d.child_dob||'',       tr, 8, false, 190);
+
+  _draw(page, 155, 600, d.child_place_city||'',   tr, 8, true, 175);
+  _draw(page, 278, 600, d.child_place_county||'', tr, 8, true, 80);
+  _draw(page, 390, 600, d.child_place_state||'',  tr, 8, true, 75);
+  _draw(page, 527, 600, d.child_birth_time||'',   tr, 8, false, 40);
+
+  const sex = (d.child_sex||'').toUpperCase();
+  if (sex === 'M') _draw(page, 232, 562, 'X', tb, 10, false, null);
+  else if (sex === 'F') _draw(page, 356, 562, 'X', tb, 10, false, null);
+
+  const comp = (d.comparece||'').toUpperCase();
+  const compMap = {PADRE:222, MADRE:286, AMBOS:341, OTRO:433};
+  for (const [k,xp] of Object.entries(compMap)) {
+    if (comp.includes(k)) _draw(page, xp, 537, 'X', tb, 10, false, null);
+  }
+
+  _draw(page, 212, 511, d.father_full||'',        tr, 8, true, 245);
+  _draw(page, 517, 511, String(d.father_age||''),  tr, 8, false, 30);
+  _draw(page, 245, 500, d.father_dob||'',          tr, 8, false, 205);
+  const fAlive = (d.father_alive||'').toUpperCase();
+  if (fAlive === 'V') _draw(page, 492, 500, 'X', tb, 9, false, null);
+  else if (fAlive === 'F') _draw(page, 535, 500, 'X', tb, 9, false, null);
+  _draw(page, 148, 489, d.father_place||'',        tr, 8, true, 265);
+  _draw(page, 500, 489, d.father_occupation||'',   tr, 8, true, 56);
+  _draw(page, 124, 477, d.father_address||'',      tr, 8, true, 330);
+  _draw(page, 511, 477, d.father_zip||'',          tr, 8, false, 50);
+
+  _draw(page, 228, 450, d.mother_full||'',         tr, 8, true, 225);
+  _draw(page, 507, 450, String(d.mother_age||''),  tr, 8, false, 30);
+  _draw(page, 245, 439, d.mother_dob||'',          tr, 8, false, 205);
+  const mAlive = (d.mother_alive||'').toUpperCase();
+  if (mAlive === 'V') _draw(page, 485, 439, 'X', tb, 9, false, null);
+  else if (mAlive === 'F') _draw(page, 528, 439, 'X', tb, 9, false, null);
+  _draw(page, 148, 428, d.mother_place||'',        tr, 8, true, 265);
+  _draw(page, 500, 428, d.mother_occupation||'',   tr, 8, true, 56);
+  _draw(page, 124, 417, d.mother_address||'',      tr, 8, true, 330);
+  _draw(page, 511, 417, d.mother_zip||'',          tr, 8, false, 50);
+
+  _draw(page, 212, 386, d.abp_name||'',   tr, 8, true, 330);
+  _draw(page, 248, 375, d.abp_place||'',  tr, 8, true, 220);
+  const abpAlive = (d.abp_alive||'').toUpperCase();
+  if (abpAlive === 'V') _draw(page, 492, 375, 'X', tb, 9, false, null);
+  else if (abpAlive === 'F') _draw(page, 536, 375, 'X', tb, 9, false, null);
+
+  _draw(page, 212, 364, d.abm_name||'',   tr, 8, true, 330);
+  _draw(page, 248, 352, d.abm_place||'',  tr, 8, true, 220);
+  const abmAlive = (d.abm_alive||'').toUpperCase();
+  if (abmAlive === 'V') _draw(page, 492, 352, 'X', tb, 9, false, null);
+  else if (abmAlive === 'F') _draw(page, 536, 352, 'X', tb, 9, false, null);
+
+  // Paternal grandparent address (combine if different)
+  const abpAddr  = d.abp_address||'', abmAddr = d.abm_address||'';
+  const abpZip   = d.abp_zip||'',     abmZip  = d.abm_zip||'';
+  const patAddr  = abpAddr + (abmAddr && abmAddr !== abpAddr ? ' / ' + abmAddr : '');
+  const patZip   = abpZip  + (abmZip  && abmZip  !== abpZip  ? ' / ' + abmZip  : '');
+  _draw(page, 124, 341, patAddr, tr, 8, true, 330);
+  _draw(page, 515, 341, patZip,  tr, 8, false, 48);
+
+  _draw(page, 212, 301, d.abmat_name||'',  tr, 8, true, 330);
+  _draw(page, 248, 289, d.abmat_place||'', tr, 8, true, 220);
+  const abmatAlive = (d.abmat_alive||'').toUpperCase();
+  if (abmatAlive === 'V') _draw(page, 492, 289, 'X', tb, 9, false, null);
+  else if (abmatAlive === 'F') _draw(page, 536, 289, 'X', tb, 9, false, null);
+
+  _draw(page, 212, 278, d.abmatm_name||'',  tr, 8, true, 330);
+  _draw(page, 248, 267, d.abmatm_place||'', tr, 8, true, 220);
+  const abmatmAlive = (d.abmatm_alive||'').toUpperCase();
+  if (abmatmAlive === 'V') _draw(page, 485, 267, 'X', tb, 9, false, null);
+  else if (abmatmAlive === 'F') _draw(page, 536, 267, 'X', tb, 9, false, null);
+
+  // Maternal grandparent address
+  const abmatAddr  = d.abmat_address||'',  abmatmAddr = d.abmatm_address||'';
+  const abmatZip   = d.abmat_zip||'',      abmatmZip  = d.abmatm_zip||'';
+  const matAddr    = abmatAddr + (abmatmAddr && abmatmAddr !== abmatAddr ? ' / ' + abmatmAddr : '');
+  const matZip     = abmatZip  + (abmatmZip  && abmatmZip  !== abmatZip  ? ' / ' + abmatmZip  : '');
+  _draw(page, 124, 256, matAddr, tr, 8, true, 330);
+  _draw(page, 511, 256, matZip,  tr, 8, false, 50);
+
+  _draw(page, 120, 233, d.father_phone||'', tr, 8, false, 175);
+  _draw(page, 437, 233, d.mother_phone||'', tr, 8, false, 120);
+  _draw(page, 276, 222, d.registrado_phone||'', tr, 8, false, 310);
+  _draw(page, 90,  211, d.email||'', tr, 8, false, 460);
+}
+
+// ── Traduccion Page 1 ─────────────────────────────────────────────────────────
+function _drawTraduccionP1(page, d, F) {
+  const BLACK = _getBlack();
+
+  _box(page, 25, 25, 562, 758, 1.0);
+
+  page.drawText('TRADUCCIÓN FIEL DEL ACTA DE NACIMIENTO',
+    {x:0, y:764, size:13.2, font:F.hb, color:BLACK,
+     maxWidth:612, lineHeight:13.2});
+  // Centered manually
+  const titleW = F.hb.widthOfTextAtSize('TRADUCCIÓN FIEL DEL ACTA DE NACIMIENTO', 13.2);
+  page.drawText('TRADUCCIÓN FIEL DEL ACTA DE NACIMIENTO',
+    {x: (612 - titleW) / 2, y:764, size:13.2, font:F.hb, color:BLACK});
+  const sub0 = '(Documento original en idioma inglés – Traducción simple no certificada)';
+  const sub0W = F.hi.widthOfTextAtSize(sub0, 6.6);
+  page.drawText(sub0, {x:(612-sub0W)/2, y:754, size:6.6, font:F.hi, color:BLACK});
+
+  _hLineFull(page, 749, 0.8);
+  _lbl(page, 30, 738, 'DATOS DEL DOCUMENTO ORIGINAL', F, {size:8.5, bold:true});
+  _lbl(page, 30, 725, 'País de expedición: Estados Unidos de América', F, {size:8.5});
+
+  _lbl(page, 30, 712, 'Estado de:', F, {size:8.5});
+  _hLine(page, 30, 710, 248);
+  _dat(page, 92, 707.5, d.estado||'', F, {maxW:154});
+
+  _lbl(page, 264, 712, 'Número de registro / Birth Number:', F, {size:8.5});
+  _hLine(page, 264, 710, 580);
+  _dat(page, 422, 707.5, d.birth_number||'', F, {maxW:156, upper:false});
+
+  _hLineFull(page, 702, 0.8);
+  _vLine(page, 349, 619, 702);
+
+  _lbl(page, 30, 691, '1. Nombre Completo del Menor', F, {size:8.5, bold:true});
+
+  _lbl(page, 358, 691, '2. Fecha de nacimiento:', F, {size:8.5, bold:true});
+  _hLine(page, 358, 689, 580);
+  _dat(page, 464, 686.5, d.child_dob||'', F, {upper:false, maxW:114});
+
+  _lbl(page, 30, 678, 'First - Primer Nombre:', F, {size:9});
+  _hLine(page, 148, 676, 340);
+  _dat(page, 149, 673.5, d.child_first||'', F, {maxW:189});
+
+  _lbl(page, 358, 678, '3. Sexo:', F, {size:8.5, bold:true});
+  _hLine(page, 358, 676, 580);
+  _dat(page, 399, 673.5, d.child_sex||'', F, {maxW:179});
+
+  _lbl(page, 30, 665, 'Middle - Segundo Nombre:', F, {size:9});
+  _hLine(page, 176, 663, 340);
+  _dat(page, 177, 660.5, d.child_middle||'', F, {maxW:161});
+
+  _lbl(page, 358, 665, '5. Hora de nacimiento:', F, {size:8.5, bold:true});
+  _hLine(page, 358, 663, 580);
+  _dat(page, 466, 660.5, d.child_birth_time||'', F, {upper:false, maxW:112});
+
+  _lbl(page, 30, 652, 'Last - Apellido:', F, {size:9});
+  _hLine(page, 144, 650, 340);
+  const childApellido = [d.child_paterno, d.child_materno].filter(Boolean).join(' ');
+  _dat(page, 145, 647.5, childApellido, F, {maxW:193});
+
+  _hLineFull(page, 619, 0.5);
+  _lbl(page, 30, 608, 'Lugar de Nacimiento', F, {size:9, bold:true});
+
+  _lbl(page, 30, 596, '4a. Place of Birth – County', F, {size:8.5});
+  _lbl(page, 30, 584, 'Lugar de nacimiento – Condado', F, {size:9});
+  _hLine(page, 30, 572, 340);
+  _dat(page, 31, 569.5, d.child_place_county||'', F, {maxW:307});
+
+  _lbl(page, 358, 596, '6b. If Plural Birth, Born 1st, 2nd, 3rd, etc.', F, {size:8.5});
+  _lbl(page, 358, 584, 'Si nació 1°, 2°, 3°, etc.', F, {size:9});
+  _hLine(page, 358, 572, 580);
+  _dat(page, 359, 569.5, d.birth_order||'', F, {upper:false, maxW:220});
+
+  _lbl(page, 30, 560, '4b. City or Town (If outside city limits, give precinct no.)', F, {size:8.5});
+  _lbl(page, 30, 548, 'Ciudad o pueblo (si fuera de los límites de la ciudad, indique precinto)', F, {size:9});
+  _hLine(page, 30, 536, 340);
+  _dat(page, 31, 533.5, d.child_place_city||'', F, {maxW:307});
+
+  _hLineFull(page, 526, 0.5);
+  _lbl(page, 30, 515, 'Lugar del Parto', F, {size:9, bold:true});
+  _lbl(page, 30, 503, '7a. Place of Birth', F, {size:9});
+  _lbl(page, 30, 491, '7a. Lugar del nacimiento', F, {size:9});
+  _lbl(page, 358, 503, '8b. Type of Attendant', F, {size:8.5});
+  _lbl(page, 358, 491, '8b. Tipo de Profesional que Atendió el Parto', F, {size:9});
+
+  const facility = (d.birth_facility_type||'').toUpperCase();
+  _chk(page, 30, 477, facility.includes('CLINIC') || facility.includes('DOCTOR'), F);
+  _lbl(page, 42, 477, 'Clinic / Doctor\'s Office – Clínica / Consultorio médico', F, {size:9});
+  _chk(page, 30, 464, facility.includes('CENTER') || facility.includes('BIRTHING'), F);
+  _lbl(page, 42, 464, 'Licensed Birthing Center – Centro de maternidad autorizado', F, {size:9});
+  _chk(page, 30, 451, facility.includes('HOSPITAL'), F);
+  _lbl(page, 42, 451, 'Hospital – Hospital', F, {size:9});
+  _chk(page, 30, 438, facility.includes('HOME'), F);
+  _lbl(page, 42, 438, 'Home Birth – Nacimiento en casa', F, {size:9});
+  _chk(page, 30, 425, false, F);
+  _lbl(page, 42, 425, 'Other (Specify) - Otro (especifique):', F, {size:9});
+  _hLine(page, 228, 423, 340);
+  if (facility && !['HOSPITAL','CLINIC','CENTER','HOME','BIRTHING'].some(x => facility.includes(x))) {
+    _dat(page, 229, 420.5, facility, F, {maxW:109});
+  }
+
+  const att = (d.attendant_type||'').toUpperCase();
+  _chk(page, 358, 477, att.includes('MD'), F);
+  _lbl(page, 370, 477, 'MD (Doctor of Medicine) – Médico (Doctor en Medicina)', F, {size:8, maxW:215});
+  _chk(page, 358, 464, att.includes('DO') && !att.includes('MD'), F);
+  _lbl(page, 370, 464, 'DO (Doctor of Osteopathy) – Doctor en Osteopatía', F, {size:8, maxW:215});
+  _chk(page, 358, 451, att.includes('CNM'), F);
+  _lbl(page, 370, 451, 'CNM (Certified Nurse Midwife) – Enfermera Partera Certificada', F, {size:7.5, maxW:215});
+  _chk(page, 358, 438, att.includes('MIDWIFE') && !att.includes('CNM'), F);
+  _lbl(page, 370, 438, 'Midwife – Partera', F, {size:8, maxW:215});
+  _chk(page, 358, 425, false, F);
+  _lbl(page, 370, 425, 'Other (Specify):', F, {size:8, maxW:215});
+  _hLine(page, 430, 423, 580);
+  if (att && !['MD','DO','CNM','MIDWIFE'].some(x => att.includes(x))) {
+    _dat(page, 431, 420.5, att, F, {maxW:148});
+  }
+
+  _lbl(page, 30, 413, '7b. Name of Hospital or Birthing Center, NPI (If Not Institution,', F, {size:9});
+  _lbl(page, 30, 401, 'Give Street Address) / Nombre del hospital o centro, NPI', F, {size:9});
+  _lbl(page, 30, 389, '(si no es institución, indique la dirección)', F, {size:9});
+  _hLine(page, 30, 377, 340);
+  _dat(page, 31, 374.5, d.hospital_name||'', F, {maxW:307});
+
+  _lbl(page, 358, 413, '8a. Attendant\'s Name, NPI, and Mailing Address', F, {size:8.5});
+  _lbl(page, 358, 401, 'Nombre del médico o persona que atendió el parto,', F, {size:9});
+  _lbl(page, 358, 389, 'NPI y dirección postal', F, {size:9});
+  _hLine(page, 358, 377, 580);
+  _dat(page, 359, 374.5, d.attendant_name||'', F, {maxW:220});
+
+  _hLineFull(page, 365, 0.8);
+  _lbl(page, 30, 354, '9. Certificador / Certifier', F, {size:9, bold:true});
+  _lbl(page, 30, 342, '9a. Certifico que este menor nació vivo en el lugar, fecha y hora indicados.', F, {size:9});
+  _lbl(page, 30, 330, '    I certify that this child was born alive at the place, time and on the date stated.', F, {size:8.5, italic:true});
+
+  _lbl(page, 30, 318, 'Nombre / Name:', F, {size:8.5});
+  _hLine(page, 105, 316, 340);
+  _dat(page, 106, 313.5, d.certifier_name||'', F, {maxW:232});
+  _lbl(page, 358, 318, 'Fecha / Date:', F, {size:8.5});
+  _hLine(page, 420, 316, 580);
+  _dat(page, 421, 313.5, d.certifier_date||'', F, {upper:false, maxW:157});
+
+  _lbl(page, 30, 305, '9b. Médico que atendió / Attendant / Facility Administrator / Designee / Other (Specify):', F, {size:8.5});
+  const ct = (d.certifier_type||'').toUpperCase();
+  _chk(page, 30,  292, ct.includes('MEDICO') || ct.includes('ATTENDANT'), F);
+  _lbl(page, 42,  292, 'Médico que atendió / Attendant', F, {size:8.5});
+  _chk(page, 215, 292, ct.includes('ADMIN'), F);
+  _lbl(page, 227, 292, 'Administrador del hospital o designado / Facility Admin.', F, {size:8.5});
+  _chk(page, 30,  279, ct.includes('OTRO') || ct.includes('OTHER'), F);
+  _lbl(page, 42,  279, 'Otro (especifique) / Other (Specify):', F, {size:8.5});
+  _hLine(page, 205, 277, 580);
+
+  _hLineFull(page, 268, 0.8);
+  _lbl(page, 30, 257, 'Nombre de la Mamá', F, {size:9, bold:true});
+  _lbl(page, 30, 245, '10. Mother\'s Name Prior to First Marriage', F, {size:9});
+  _lbl(page, 30, 233, 'Nombre de la madre antes de su primer matrimonio', F, {size:9});
+
+  _lbl(page, 30, 221, 'First – Nombre:', F, {size:9});
+  _hLine(page, 115, 219, 340);
+  _dat(page, 116, 216.5, d.mother_first||'', F, {maxW:222});
+
+  _lbl(page, 30, 208, 'Middle – Segundo nombre:', F, {size:9});
+  _hLine(page, 168, 206, 340);
+  _dat(page, 169, 203.5, d.mother_middle||'', F, {maxW:169});
+
+  _lbl(page, 30, 195, 'Last – Apellido:', F, {size:9});
+  _hLine(page, 115, 193, 340);
+  const mLast = [d.mother_paterno, d.mother_materno].filter(Boolean).join(' ');
+  _dat(page, 116, 190.5, mLast, F, {maxW:222});
+
+  _lbl(page, 30, 182, 'Suffix – Sufijo:', F, {size:9});
+  _hLine(page, 115, 180, 220);
+
+  _lbl(page, 30, 169, '11. Date of Birth (mm/dd/yyyy) Fecha de nacimiento:', F, {size:9});
+  _hLine(page, 276, 167, 460);
+  _dat(page, 277, 164.5, d.mother_dob||'', F, {upper:false, maxW:181});
+
+  _lbl(page, 30, 156, '12. Birthplace (State, Territory or Foreign Country) / Lugar de nacimiento (Estado, territorio o país extranjero)', F, {size:8.5});
+  _hLine(page, 30, 144, 580);
+  _dat(page, 31, 141.5, d.mother_birthplace||'', F, {maxW:547});
+
+  _lbl(page, 30, 132, '13a. Residence – State / Residencia – Estado', F, {size:8.5});
+  _hLine(page, 30, 130, 340);
+  _dat(page, 228, 127.5, d.mother_res_state||'', F, {maxW:110});
+
+  _lbl(page, 358, 132, '13b. County / Condado:', F, {size:8.5});
+  _hLine(page, 358, 130, 580);
+  _dat(page, 466, 127.5, d.mother_res_county||'', F, {maxW:112});
+
+  _lbl(page, 30, 117, 'Continúa en la página 2 / Continued on page 2', F, {size:8, italic:true});
+}
+
+// ── Traduccion Page 2 ─────────────────────────────────────────────────────────
+function _drawTraduccionP2(page, d, F) {
+  const BLACK = _getBlack();
+
+  _box(page, 25, 420, 562, 365, 1.0);
+
+  const t2 = 'TRADUCCIÓN FIEL DEL ACTA DE NACIMIENTO';
+  const t2W = F.hb.widthOfTextAtSize(t2, 13.2);
+  page.drawText(t2, {x:(612-t2W)/2, y:768, size:13.2, font:F.hb, color:BLACK});
+  const s2 = '(Continuación – Página 2 / Continuation – Page 2)';
+  const s2W = F.hi.widthOfTextAtSize(s2, 6.6);
+  page.drawText(s2, {x:(612-s2W)/2, y:757, size:6.6, font:F.hi, color:BLACK});
+
+  _hLineFull(page, 751, 0.8);
+
+  _lbl(page, 30, 740, '13c. City, Town or Location / Ciudad, pueblo o localidad:', F, {size:8.5});
+  _hLine(page, 30, 738, 580);
+  _dat(page, 266, 735.5, d.mother_res_city||'', F, {maxW:312});
+
+  _lbl(page, 30, 727, '13d. Street Address or Rural Location / Dirección o ubicación rural:', F, {size:8.5});
+  _hLine(page, 30, 725, 580);
+  _dat(page, 327, 722.5, d.mother_res_street||'', F, {maxW:251});
+
+  _lbl(page, 30, 714, '13e. Zip Code / Código postal:', F, {size:8.5});
+  _hLine(page, 30, 712, 300);
+  _dat(page, 174, 709.5, d.mother_res_zip||'', F, {upper:false, maxW:124});
+
+  _lbl(page, 315, 714, '13f. Inside City Limits – Yes / No', F, {size:8.5});
+  _lbl(page, 315, 703, 'Dentro de los límites de la ciudad – Sí / No:', F, {size:9});
+  _hLine(page, 315, 701, 580);
+  _dat(page, 461, 709.5, d.inside_city_limits||'', F, {maxW:117});
+
+  _hLineFull(page, 692, 0.5);
+
+  // Mailing address
+  _lbl(page, 30, 681, '14. Mailing Address (If Same As Residence, Enter Zip Code Only)', F, {size:9});
+  _lbl(page, 42, 669, 'Dirección postal (si es igual a la residencia, escriba solo el código postal)', F, {size:9});
+  const mailing = (d.mailing_address||'');
+  const mailingSame = mailing.toUpperCase() === 'SAME' || !mailing;
+  _chk(page, 30, 656, mailingSame, F);
+  _lbl(page, 42, 656, 'Same (Misma dirección)', F, {size:9});
+  if (!mailingSame && mailing) {
+    _hLine(page, 42, 654, 580);
+    _dat(page, 43, 651.5, mailing, F, {maxW:535});
+  }
+
+  _hLineFull(page, 645, 0.8);
+
+  _lbl(page, 30, 634, 'Nombre del Papá', F, {size:9, bold:true});
+  _lbl(page, 30, 622, '15. Father\'s Name Prior to First Marriage', F, {size:9});
+  _lbl(page, 30, 610, 'Nombre del Padre antes de su primer matrimonio', F, {size:9});
+
+  _lbl(page, 30, 598, 'First – Nombre:', F, {size:9});
+  _hLine(page, 115, 596, 580);
+  _dat(page, 116, 593.5, d.father_first||'', F, {maxW:462});
+
+  _lbl(page, 30, 585, 'Middle – Segundo nombre:', F, {size:9});
+  _hLine(page, 168, 583, 580);
+  _dat(page, 169, 580.5, d.father_middle||'', F, {maxW:409});
+
+  _lbl(page, 30, 572, 'Last – Apellido:', F, {size:9});
+  _hLine(page, 115, 570, 580);
+  const fLast = [d.father_paterno, d.father_materno].filter(Boolean).join(' ');
+  _dat(page, 116, 567.5, fLast, F, {maxW:462});
+
+  _lbl(page, 30, 559, 'Suffix – Sufijo:', F, {size:9});
+  _hLine(page, 115, 557, 280);
+
+  _lbl(page, 30, 546, '16. Date of Birth (mm/dd/yyyy) Fecha de nacimiento:', F, {size:8.5});
+  _hLine(page, 276, 544, 460);
+  _dat(page, 277, 541.5, d.father_dob||'', F, {upper:false, maxW:181});
+
+  _lbl(page, 30, 533, '17. Birthplace (State, Territory or Foreign Country) / Lugar de nacimiento (Estado, territorio o país extranjero)', F, {size:8.5});
+  _hLine(page, 30, 521, 580);
+  _dat(page, 31, 518.5, d.father_birthplace||'', F, {maxW:547});
+
+  _hLineFull(page, 511, 0.8);
+
+  _lbl(page, 30, 500, '18a. Local File Number / Número de archivo local:', F, {size:8.5});
+  _hLine(page, 30, 498, 580);
+  _dat(page, 264, 495.5, d.local_file_number||'', F, {upper:false, maxW:314});
+
+  _lbl(page, 30, 487, '18b. Date Received by Local Registrar / Fecha de recepción por el registrador local:', F, {size:8.5});
+  _hLine(page, 30, 485, 580);
+  _dat(page, 408, 482.5, d.date_received_registrar||'', F, {upper:false, maxW:170});
+
+  _hLineFull(page, 475, 0.5);
+}
+
+// ── Load fonts once per document ─────────────────────────────────────────────
+async function _loadFonts(pdfDoc) {
+  return {
+    tr: await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman),
+    tb: await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRomanBold),
+    h:  await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+    hb: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
+    hi: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaOblique),
+  };
+}
+
+// ── Generate single Solicitud PDF ────────────────────────────────────────────
+async function _genSolicitud(mergedData, templateBytes) {
+  const pdfDoc = await PDFLib.PDFDocument.load(templateBytes);
+  const F = await _loadFonts(pdfDoc);
+  const page = pdfDoc.getPages()[0];
+  _drawSolicitudP1(page, mergedData, F);
+  return await pdfDoc.save();
+}
+
+// ── Generate single Traduccion PDF (2 pages from scratch) ────────────────────
+async function _genTraduccion(mergedData) {
+  const pdfDoc = await PDFLib.PDFDocument.create();
+  const LETTER = [612, 792];
+  const F = await _loadFonts(pdfDoc);
+
+  // Page 1
+  const p1 = pdfDoc.addPage(LETTER);
+  _drawTraduccionP1(p1, mergedData, F);
+
+  // Page 2
+  const p2 = pdfDoc.addPage(LETTER);
+  _drawTraduccionP2(p2, mergedData, F);
+
+  return await pdfDoc.save();
+}
+
+// ── Upload PDF bytes to Apps Script Drive ────────────────────────────────────
+async function _uploadPDFToAppsScript(caseId, filename, pdfBytes) {
+  // Convert Uint8Array to base64
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < pdfBytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, pdfBytes.subarray(i, i + chunk));
+  }
+  const base64 = btoa(binary);
+
+  const payload = {
+    token:      GAS_CONFIG.SECRET_TOKEN,
+    action:     'uploadPDF',
+    caseId:     caseId,
+    filename:   filename,
+    base64Data: base64,
+    mimeType:   'application/pdf',
+  };
+
+  const response = await fetch(GAS_CONFIG.APPS_SCRIPT_URL, {
+    method:   'POST',
+    headers:  { 'Content-Type': 'text/plain' },
+    body:     JSON.stringify(payload),
+    redirect: 'follow',
+  });
+
+  let result;
+  try { result = await response.json(); } catch(e) {
+    throw new Error('Respuesta inesperada al subir ' + filename);
+  }
+  if (!result.ok) throw new Error(result.error || 'Error al subir ' + filename);
+  return result.fileUrl;
+}
+
+// ── MAIN: Generate all PDFs for all children ─────────────────────────────────
+async function generateAllPDFs() {
+  if (!currentCaseData) { alert('No hay datos del caso. Abra el caso desde el link de aprobación.'); return; }
+  if (!currentCaseData.data || !currentCaseData.data.children) { alert('No hay hijos en los datos del caso.'); return; }
+
+  const caseId   = currentCaseData.caseId;
+  const family   = currentCaseData.data.family   || {};
+  const children = currentCaseData.data.children || [];
+
+  // Defaults matching generate_all_forms() in fill_forms.py
+  family.father_middle = family.father_middle || '';
+  family.mother_middle = family.mother_middle || '';
+  family.father_full = family.father_full || [family.father_first, family.father_middle, family.father_paterno, family.father_materno].filter(Boolean).join(' ');
+  family.mother_full = family.mother_full || [family.mother_first, family.mother_middle, family.mother_paterno, family.mother_materno].filter(Boolean).join(' ');
+
+  // UI setup
+  const btn      = document.getElementById('generatePDFsBtn');
+  const progress = document.getElementById('pdfProgress');
+  const statusEl = document.getElementById('pdfStatusText');
+  const allDone  = document.getElementById('pdfAllDone');
+  const errDiv   = document.getElementById('pdfError');
+
+  btn.disabled = true;
+  btn.textContent = 'Generando PDFs...';
+  progress.style.display = 'block';
+  allDone.style.display  = 'none';
+  errDiv.style.display   = 'none';
+
+  const setStatus = msg => { statusEl.textContent = msg; };
+  const markDone  = (i, type, url) => {
+    const el = document.getElementById('pdf' + (type === 'solic' ? 'Solic' : 'Trad') + '_' + i);
+    if (el) {
+      el.style.background = '#f0fdf4';
+      el.style.borderColor = '#86efac';
+      el.style.color = '#1A6B3C';
+      el.innerHTML = '✅ ' + (type === 'solic' ? 'SOLICITUD' : 'TRADUCCIÓN') +
+        (url ? ` <a href="${url}" target="_blank" style="font-size:10px;color:var(--us-blue);margin-left:4px;">Ver ↗</a>` : '');
+    }
+  };
+
+  try {
+    setStatus('Descargando template de Solicitud...');
+    const templateBytes = await fetchSolicitudTemplate();
+
+    for (let i = 0; i < children.length; i++) {
+      const child  = children[i];
+      const merged = { ...family, ...child };
+
+      const fap    = (family.father_paterno || 'PADRE').replace(/\s+/g,'_');
+      const map_   = (family.mother_paterno || 'MADRE').replace(/\s+/g,'_');
+      const cfirst = (child.child_first || '').replace(/\s+/g,'_');
+      const name   = `${fap}_${map_}_${cfirst}`;
+
+      // SOLICITUD
+      setStatus(`Generando Solicitud — Hijo ${i+1}: ${child.child_first||''}`);
+      const solicBytes = await _genSolicitud(merged, templateBytes);
+      setStatus(`Subiendo Solicitud — ${name}_SOLICITUD.pdf...`);
+      const solicUrl   = await _uploadPDFToAppsScript(caseId, `${name}_SOLICITUD.pdf`, solicBytes);
+      markDone(i, 'solic', solicUrl);
+
+      // TRADUCCION
+      setStatus(`Generando Traducción — Hijo ${i+1}: ${child.child_first||''}`);
+      const tradBytes  = await _genTraduccion(merged);
+      setStatus(`Subiendo Traducción — ${name}_TRADUCCION.pdf...`);
+      const tradUrl    = await _uploadPDFToAppsScript(caseId, `${name}_TRADUCCION.pdf`, tradBytes);
+      markDone(i, 'trad', tradUrl);
+    }
+
+    setStatus('');
+    allDone.style.display = 'block';
+    btn.textContent = '✅ PDFs generados';
+
+  } catch (err) {
+    errDiv.style.display = 'block';
+    errDiv.textContent   = 'Error: ' + err.message;
+    btn.disabled         = false;
+    btn.textContent      = '↻ Reintentar';
+    setStatus('');
+  }
+}
 </script>
 </body>
 </html>
