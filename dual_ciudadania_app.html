@@ -418,6 +418,155 @@ body {
   .col-2, .col-3, .col-4, .col-1-2, .col-2-1, .col-1-1-2 { grid-template-columns: 1fr; }
   .span-2, .span-3, .span-4 { grid-column: span 1; }
 }
+
+/* ── POC DASHBOARD ───────────────────────────────────────────── */
+#pocDashboard { display: none; }
+#pocDashboard.active { display: block; }
+
+.poc-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.poc-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: all .15s;
+}
+.poc-stat:hover { border-color: var(--us-blue); }
+.poc-stat.active-filter { border-color: var(--us-blue); background: #eff6ff; }
+.poc-stat .ps-num { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+.poc-stat .ps-lbl { font-size: 11px; font-weight: 600; text-transform: uppercase;
+                    letter-spacing: .6px; color: var(--muted); margin-top: 4px; }
+.poc-stat.ps-pending .ps-num  { color: var(--warn); }
+.poc-stat.ps-approved .ps-num { color: var(--success); }
+.poc-stat.ps-rejected .ps-num { color: var(--danger); }
+.poc-stat.ps-needs .ps-num    { color: #7c3aed; }
+
+.poc-filter-bar {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 20px; align-items: center;
+}
+.poc-filter-btn {
+  padding: 6px 14px; border-radius: 100px;
+  border: 1px solid var(--border);
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; background: var(--surface);
+  color: var(--muted); transition: all .15s;
+}
+.poc-filter-btn:hover { border-color: var(--us-blue); color: var(--us-blue); }
+.poc-filter-btn.active { background: var(--us-blue); border-color: var(--us-blue); color: #fff; }
+
+.poc-refresh-btn {
+  margin-left: auto; padding: 6px 14px;
+  border-radius: 100px; border: 1px solid var(--border);
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; background: var(--surface); color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+}
+.poc-refresh-btn:hover { background: var(--surface2); }
+
+.poc-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.poc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.poc-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted); font-weight: 700;
+  font-size: 10px; text-transform: uppercase; letter-spacing: .8px;
+  white-space: nowrap;
+}
+.poc-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(0,0,0,.05);
+  vertical-align: middle;
+}
+.poc-table tr:last-child td { border-bottom: none; }
+.poc-table tr:hover td { background: #fafafa; }
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px; border-radius: 100px;
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .6px;
+  white-space: nowrap;
+}
+.badge-PENDING    { background:#fff7ed; color:var(--warn);    border:1px solid #fed7aa; }
+.badge-APPROVED   { background:#f0fdf4; color:var(--success); border:1px solid #86efac; }
+.badge-REJECTED   { background:#fef2f2; color:var(--danger);  border:1px solid #fca5a5; }
+.badge-NEEDS_EDIT { background:#f5f3ff; color:#7c3aed;        border:1px solid #c4b5fd; }
+.badge-COMPLETED  { background:#f0f9ff; color:#0369a1;        border:1px solid #7dd3fc; }
+
+.poc-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.pac {
+  padding: 5px 12px; border-radius: var(--radius);
+  font-size: 11px; font-weight: 700;
+  cursor: pointer; border: none; transition: all .15s;
+  white-space: nowrap;
+}
+.pac-approve { background: var(--success); color: #fff; }
+.pac-approve:hover { background: #155e32; }
+.pac-reject  { background: var(--danger);  color: #fff; }
+.pac-reject:hover  { background: #991b1b; }
+.pac-edit    { background: #7c3aed; color: #fff; }
+.pac-edit:hover    { background: #5b21b6; }
+.pac-view    { background: var(--surface2); color: var(--text); border:1px solid var(--border); }
+.pac-view:hover    { background: var(--border); }
+
+.poc-case-id { font-family: monospace; font-size: 11px; color: var(--muted); }
+.poc-family  { font-weight: 700; color: var(--text); }
+
+.poc-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Action modal */
+.poc-modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 1000;
+  align-items: center; justify-content: center;
+}
+.poc-modal-overlay.open { display: flex; }
+.poc-modal {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 28px 32px;
+  max-width: 480px; width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.poc-modal h3 { font-family: var(--font-serif); font-size: 18px; margin-bottom: 6px; }
+.poc-modal .pm-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+.poc-modal textarea {
+  width: 100%; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px;
+  font-family: var(--font-sans); font-size: 13px;
+  resize: vertical; min-height: 90px;
+}
+.poc-modal textarea:focus { outline: none; border-color: var(--us-blue);
+  box-shadow: 0 0 0 3px rgba(0,40,104,.08); }
+.poc-modal .pm-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.poc-loading { text-align:center; padding:48px; color:var(--muted); font-size:14px; }
 </style>
 </head>
 <body>
@@ -457,7 +606,91 @@ body {
 
 <div class="app-body">
 
-  <!-- EDIT MODE BANNER (shown when ?case=ID&edit=true) -->
+  <!-- ══ POC DASHBOARD (shown when ?mode=poc) ══════════════════ -->
+  <div id="pocDashboard">
+
+    <!-- Stats row -->
+    <div class="poc-stats" id="pocStats">
+      <div class="poc-stat" onclick="setPOCFilter('ALL')" id="stat-ALL">
+        <div class="ps-num" id="stat-num-ALL">—</div>
+        <div class="ps-lbl">Total Casos</div>
+      </div>
+      <div class="poc-stat ps-pending" onclick="setPOCFilter('PENDING')" id="stat-PENDING">
+        <div class="ps-num" id="stat-num-PENDING">—</div>
+        <div class="ps-lbl">⏳ Pendientes</div>
+      </div>
+      <div class="poc-stat ps-approved" onclick="setPOCFilter('APPROVED')" id="stat-APPROVED">
+        <div class="ps-num" id="stat-num-APPROVED">—</div>
+        <div class="ps-lbl">✅ Aprobados</div>
+      </div>
+      <div class="poc-stat ps-rejected" onclick="setPOCFilter('REJECTED')" id="stat-REJECTED">
+        <div class="ps-num" id="stat-num-REJECTED">—</div>
+        <div class="ps-lbl">❌ Rechazados</div>
+      </div>
+      <div class="poc-stat ps-needs" onclick="setPOCFilter('NEEDS_EDIT')" id="stat-NEEDS_EDIT">
+        <div class="ps-num" id="stat-num-NEEDS_EDIT">—</div>
+        <div class="ps-lbl">⚠ Necesita Corrección</div>
+      </div>
+      <div class="poc-stat ps-approved" onclick="setPOCFilter('COMPLETED')" id="stat-COMPLETED">
+        <div class="ps-num" id="stat-num-COMPLETED">—</div>
+        <div class="ps-lbl">📄 Completados</div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="poc-filter-bar">
+      <button class="poc-filter-btn active" onclick="setPOCFilter('ALL')" id="filt-ALL">Todos</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('PENDING')"    id="filt-PENDING">⏳ Pendientes</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('APPROVED')"   id="filt-APPROVED">✅ Aprobados</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('REJECTED')"   id="filt-REJECTED">❌ Rechazados</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('NEEDS_EDIT')" id="filt-NEEDS_EDIT">⚠ Necesita Corrección</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('COMPLETED')"  id="filt-COMPLETED">📄 Completados</button>
+      <button class="poc-refresh-btn" onclick="loadPOCCases()">↻ Actualizar</button>
+    </div>
+
+    <!-- Cases table -->
+    <div class="poc-table-wrap">
+      <div id="pocTableBody">
+        <div class="poc-loading">⏳ Cargando casos...</div>
+      </div>
+    </div>
+
+    <!-- Bottom links -->
+    <div style="margin-top:16px; display:flex; gap:16px; font-size:12px; color:var(--muted); flex-wrap:wrap; align-items:center;">
+      <span>
+        <a id="pocSheetsLink" href="#" target="_blank"
+           style="color:var(--us-blue); text-decoration:none; font-weight:600;">
+          📊 Abrir Google Sheets ↗
+        </a>
+      </span>
+      <span style="margin-left:auto; opacity:.6;">
+        Sistema Doble Ciudadanía · Consulado de México en Albuquerque
+      </span>
+    </div>
+
+  </div><!-- /pocDashboard -->
+
+  <!-- ACTION MODAL -->
+  <div class="poc-modal-overlay" id="pocModalOverlay">
+    <div class="poc-modal">
+      <h3 id="pmTitle">Confirmar acción</h3>
+      <div class="pm-sub" id="pmSub"></div>
+      <div id="pmNotesWrap">
+        <label style="font-size:11px; font-weight:700; text-transform:uppercase;
+                      letter-spacing:.6px; color:var(--muted); display:block; margin-bottom:6px;">
+          Notas para el personal <span id="pmNotesReq" style="color:var(--mx-red);">*</span>
+        </label>
+        <textarea id="pmNotes" placeholder="Describa qué necesita corregirse o el motivo del rechazo..."></textarea>
+        <div id="pmNotesError" style="display:none; font-size:11px; color:var(--danger); margin-top:4px;">
+          Las notas son requeridas para rechazar o solicitar corrección.
+        </div>
+      </div>
+      <div class="pm-btns">
+        <button class="btn btn-secondary" onclick="closePOCModal()">Cancelar</button>
+        <button class="btn" id="pmConfirmBtn" onclick="submitPOCAction()">Confirmar</button>
+      </div>
+    </div>
+  </div>
   <div class="edit-mode-banner" id="editModeBanner">
     <div style="font-size:18px; flex-shrink:0;">⚠️</div>
     <div>
@@ -2569,9 +2802,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const pocMode  = params.get('mode') === 'poc';
 
   if (pocMode) {
-    // Build 5 stub — POC mode coming next
-    document.getElementById('headerSub').textContent = 'Modo POC — Panel de revisión (próximamente)';
-    addChild();
+    initPOCDashboard();
     return;
   }
 
@@ -2590,7 +2821,293 @@ window.addEventListener('DOMContentLoaded', () => {
 }); // end DOMContentLoaded
 
 // ═══════════════════════════════════════════════════════════════
-// BUILD 4 — PDF GENERATION (pdf-lib)
+// BUILD 5 — POC DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+
+// Config: add your Google Sheet URL here so the Sheets link works
+const SHEETS_URL = 'https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit';
+
+let _pocAllCases   = [];  // all cases from API
+let _pocFilter     = 'ALL';
+let _pocModalCase  = null; // {caseId, action}
+
+// ── Init POC mode ─────────────────────────────────────────────
+function initPOCDashboard() {
+  // Update header
+  const sub = document.getElementById('headerSub');
+  if (sub) sub.textContent = 'Modo POC — Panel de Revisión · Uso interno';
+
+  // Show dashboard, hide step form
+  document.getElementById('pocDashboard').classList.add('active');
+
+  // Hide all step-form elements
+  ['editModeBanner','loadingBanner','warning7Children',
+   'page1','page2','page3','page4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  // Set Sheets link
+  const sl = document.getElementById('pocSheetsLink');
+  if (sl && !SHEETS_URL.includes('REPLACE_WITH')) sl.href = SHEETS_URL;
+
+  // Parse filter from URL if present
+  const params = new URLSearchParams(window.location.search);
+  const f = params.get('filter');
+  if (f) _pocFilter = f;
+
+  loadPOCCases();
+}
+
+// ── Load all cases from API ───────────────────────────────────
+async function loadPOCCases() {
+  const tbody = document.getElementById('pocTableBody');
+  tbody.innerHTML = '<div class="poc-loading">⏳ Cargando casos...</div>';
+
+  try {
+    const url = GAS_CONFIG.APPS_SCRIPT_URL
+      + '?action=getCases'
+      + '&token=' + encodeURIComponent(GAS_CONFIG.SECRET_TOKEN);
+    const resp   = await fetch(url, {redirect:'follow'});
+    const result = await resp.json();
+    if (!result.ok) throw new Error(result.error || 'Error al cargar casos');
+    _pocAllCases = result.cases || [];
+    _renderPOCStats();
+    _renderPOCTable(_pocFilter);
+  } catch (err) {
+    tbody.innerHTML = `<div class="poc-loading" style="color:var(--danger);">
+      ❌ Error: ${err.message}<br>
+      <button onclick="loadPOCCases()" style="margin-top:12px; padding:8px 18px;
+        background:var(--us-blue); color:#fff; border:none; border-radius:6px;
+        font-weight:600; cursor:pointer;">Reintentar</button>
+    </div>`;
+  }
+}
+
+// ── Render stats cards ────────────────────────────────────────
+function _renderPOCStats() {
+  const counts = {ALL:0, PENDING:0, APPROVED:0, REJECTED:0, NEEDS_EDIT:0, COMPLETED:0};
+  counts.ALL = _pocAllCases.length;
+  _pocAllCases.forEach(c => { if (counts[c.status] !== undefined) counts[c.status]++; });
+  Object.entries(counts).forEach(([k,v]) => {
+    const el = document.getElementById('stat-num-' + k);
+    if (el) el.textContent = v;
+  });
+}
+
+// ── Set filter ────────────────────────────────────────────────
+function setPOCFilter(f) {
+  _pocFilter = f;
+  // Update filter buttons
+  document.querySelectorAll('.poc-filter-btn').forEach(b => b.classList.remove('active'));
+  const fb = document.getElementById('filt-' + f);
+  if (fb) fb.classList.add('active');
+  // Update stat cards
+  document.querySelectorAll('.poc-stat').forEach(s => s.classList.remove('active-filter'));
+  const sc = document.getElementById('stat-' + f);
+  if (sc) sc.classList.add('active-filter');
+  _renderPOCTable(f);
+}
+
+// ── Render the cases table ────────────────────────────────────
+function _renderPOCTable(filter) {
+  const cases = filter === 'ALL'
+    ? _pocAllCases
+    : _pocAllCases.filter(c => c.status === filter);
+
+  const tbody = document.getElementById('pocTableBody');
+
+  if (cases.length === 0) {
+    tbody.innerHTML = `<div class="poc-empty">
+      ${filter === 'ALL' ? 'No hay casos registrados aún.' : 'No hay casos con estado "' + filter + '".'}
+    </div>`;
+    return;
+  }
+
+  const rows = cases.map(c => {
+    const date = _fmtDate(c.submittedAt);
+    const badge = `<span class="status-badge badge-${c.status}">${_fmtStatus(c.status)}</span>`;
+    const viewUrl = `${GAS_CONFIG.APP_URL || window.location.origin + window.location.pathname}?case=${c.caseId}`;
+    const driveBtn = c.driveFolder
+      ? `<a href="${c.driveFolder}" target="_blank" class="pac pac-view" style="text-decoration:none;">📁 Drive</a>`
+      : '';
+    const pocNoteSnippet = c.pocNotes
+      ? `<div style="font-size:10px; color:var(--muted); margin-top:3px; max-width:200px;
+              overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${c.pocNotes}">
+           💬 ${c.pocNotes}</div>`
+      : '';
+
+    // Action buttons depend on status
+    let actionBtns = '';
+    if (c.status === 'PENDING') {
+      actionBtns = `
+        <button class="pac pac-approve" onclick="openPOCModal('${c.caseId}','APPROVED')">✓ Aprobar</button>
+        <button class="pac pac-reject"  onclick="openPOCModal('${c.caseId}','REJECTED')">✗ Rechazar</button>
+        <button class="pac pac-edit"    onclick="openPOCModal('${c.caseId}','NEEDS_EDIT')">⚠ Corrección</button>
+      `;
+    } else if (c.status === 'NEEDS_EDIT' || c.status === 'REJECTED') {
+      actionBtns = `
+        <button class="pac pac-approve" onclick="openPOCModal('${c.caseId}','APPROVED')">✓ Aprobar</button>
+      `;
+    } else if (c.status === 'APPROVED') {
+      actionBtns = `
+        <button class="pac pac-reject" onclick="openPOCModal('${c.caseId}','REJECTED')">✗ Rechazar</button>
+      `;
+    }
+
+    return `
+      <tr>
+        <td>
+          <div class="poc-case-id">${c.caseId}</div>
+          <div style="font-size:10px; color:var(--muted); margin-top:2px;">${date}</div>
+        </td>
+        <td>
+          <div class="poc-family">${c.familyLabel || '—'}</div>
+          ${pocNoteSnippet}
+        </td>
+        <td style="text-align:center; font-weight:700;">${c.numChildren || '—'}</td>
+        <td>${badge}</td>
+        <td>
+          <div class="poc-actions">
+            ${actionBtns}
+            <a href="${viewUrl}" target="_blank" class="pac pac-view" style="text-decoration:none;">👁 Ver</a>
+            ${driveBtn}
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  tbody.innerHTML = `
+    <table class="poc-table">
+      <thead>
+        <tr>
+          <th>ID / Fecha</th>
+          <th>Familia</th>
+          <th style="text-align:center;">Hijos</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── Open action modal ─────────────────────────────────────────
+function openPOCModal(caseId, action) {
+  _pocModalCase = {caseId, action};
+
+  const titles = {
+    APPROVED:   '✅ Aprobar Caso',
+    REJECTED:   '❌ Rechazar Caso',
+    NEEDS_EDIT: '⚠ Solicitar Corrección',
+  };
+  const subs = {
+    APPROVED:   `Caso ${caseId} — El personal será notificado con un enlace para generar los PDFs.`,
+    REJECTED:   `Caso ${caseId} — El personal recibirá sus notas con el motivo del rechazo.`,
+    NEEDS_EDIT: `Caso ${caseId} — El personal recibirá sus notas y podrá editar y reenviar el caso.`,
+  };
+  const btnColors = { APPROVED:'btn-success', REJECTED:'btn-danger', NEEDS_EDIT:'btn-primary' };
+  const btnLabels = { APPROVED:'Confirmar Aprobación', REJECTED:'Confirmar Rechazo', NEEDS_EDIT:'Enviar Corrección' };
+
+  document.getElementById('pmTitle').textContent    = titles[action] || 'Confirmar';
+  document.getElementById('pmSub').textContent      = subs[action]   || '';
+  document.getElementById('pmNotes').value          = '';
+  document.getElementById('pmNotesError').style.display = 'none';
+
+  const confirmBtn = document.getElementById('pmConfirmBtn');
+  confirmBtn.className = 'btn ' + (btnColors[action] || 'btn-primary');
+  confirmBtn.textContent = btnLabels[action] || 'Confirmar';
+
+  // Notes are optional for APPROVED, required for REJECTED/NEEDS_EDIT
+  const notesRequired = action !== 'APPROVED';
+  document.getElementById('pmNotesReq').style.display = notesRequired ? '' : 'none';
+  const ta = document.getElementById('pmNotes');
+  ta.placeholder = action === 'APPROVED'
+    ? 'Notas opcionales para el personal...'
+    : 'Describa qué necesita corregirse o el motivo del rechazo...';
+
+  document.getElementById('pocModalOverlay').classList.add('open');
+  setTimeout(() => ta.focus(), 100);
+}
+
+function closePOCModal() {
+  document.getElementById('pocModalOverlay').classList.remove('open');
+  _pocModalCase = null;
+}
+
+// ── Submit action to API ──────────────────────────────────────
+async function submitPOCAction() {
+  if (!_pocModalCase) return;
+  const {caseId, action} = _pocModalCase;
+  const notes = document.getElementById('pmNotes').value.trim();
+  const errEl = document.getElementById('pmNotesError');
+
+  // Require notes for reject/needs_edit
+  if (action !== 'APPROVED' && !notes) {
+    errEl.style.display = 'block';
+    document.getElementById('pmNotes').focus();
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const confirmBtn = document.getElementById('pmConfirmBtn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Enviando...';
+
+  try {
+    const payload = {
+      token:    GAS_CONFIG.SECRET_TOKEN,
+      action:   'updateStatus',
+      caseId:   caseId,
+      status:   action,
+      pocNotes: notes,
+      pocName:  'POC',
+    };
+    const resp   = await fetch(GAS_CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain'},
+      body: JSON.stringify(payload),
+      redirect: 'follow',
+    });
+    const result = await resp.json();
+    if (!result.ok) throw new Error(result.error || 'Error desconocido');
+
+    closePOCModal();
+    // Reload all cases to refresh the table
+    await loadPOCCases();
+  } catch (err) {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Reintentar';
+    errEl.style.display  = 'block';
+    errEl.textContent    = '❌ Error: ' + err.message;
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function _fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-MX', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+  } catch(e) { return iso; }
+}
+function _fmtStatus(s) {
+  const m = {PENDING:'Pendiente', APPROVED:'Aprobado', REJECTED:'Rechazado',
+             NEEDS_EDIT:'Necesita Corrección', COMPLETED:'Completado'};
+  return m[s] || s;
+}
+
+// Close modal on overlay click
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('pocModalOverlay');
+  if (overlay) overlay.addEventListener('click', e => {
+    if (e.target === overlay) closePOCModal();
+  });
+  // Close modal on Escape key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePOCModal();
+  });
+});
 // Direct port of fill_forms.py coordinate system.
 // Solicitud:  draw directly on template page (same coords as Python overlay)
 // Traduccion: built from scratch, Letter 612×792
