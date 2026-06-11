@@ -512,6 +512,8 @@ body {
 .badge-REJECTED   { background:#fef2f2; color:var(--danger);  border:1px solid #fca5a5; }
 .badge-NEEDS_EDIT { background:#f5f3ff; color:#7c3aed;        border:1px solid #c4b5fd; }
 .badge-COMPLETED  { background:#f0f9ff; color:#0369a1;        border:1px solid #7dd3fc; }
+.badge-NEEDS_STAFF_REVIEW { background:#fff1f2; color:#be185d; border:1px solid #fbcfe8; }
+.badge-COMPLETED  { background:#f0f9ff; color:#0369a1;        border:1px solid #7dd3fc; }
 
 .poc-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .pac {
@@ -635,16 +637,22 @@ body {
         <div class="ps-num" id="stat-num-COMPLETED">—</div>
         <div class="ps-lbl">📄 Completados</div>
       </div>
+      <div class="poc-stat" onclick="setPOCFilter('NEEDS_STAFF_REVIEW')" id="stat-NEEDS_STAFF_REVIEW"
+           style="border-color:#fbcfe8;">
+        <div class="ps-num" id="stat-num-NEEDS_STAFF_REVIEW" style="color:#be185d;">—</div>
+        <div class="ps-lbl" style="color:#be185d;">📋 Pre-Registro Familiar</div>
+      </div>
     </div>
 
     <!-- Filter bar -->
     <div class="poc-filter-bar">
       <button class="poc-filter-btn active" onclick="setPOCFilter('ALL')" id="filt-ALL">Todos</button>
-      <button class="poc-filter-btn" onclick="setPOCFilter('PENDING')"    id="filt-PENDING">⏳ Pendientes</button>
-      <button class="poc-filter-btn" onclick="setPOCFilter('APPROVED')"   id="filt-APPROVED">✅ Aprobados</button>
-      <button class="poc-filter-btn" onclick="setPOCFilter('REJECTED')"   id="filt-REJECTED">❌ Rechazados</button>
-      <button class="poc-filter-btn" onclick="setPOCFilter('NEEDS_EDIT')" id="filt-NEEDS_EDIT">⚠ Necesita Corrección</button>
-      <button class="poc-filter-btn" onclick="setPOCFilter('COMPLETED')"  id="filt-COMPLETED">📄 Completados</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('PENDING')"             id="filt-PENDING">⏳ Pendientes</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('NEEDS_STAFF_REVIEW')"  id="filt-NEEDS_STAFF_REVIEW">📋 Pre-Registro</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('APPROVED')"            id="filt-APPROVED">✅ Aprobados</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('REJECTED')"            id="filt-REJECTED">❌ Rechazados</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('NEEDS_EDIT')"          id="filt-NEEDS_EDIT">⚠ Necesita Corrección</button>
+      <button class="poc-filter-btn" onclick="setPOCFilter('COMPLETED')"           id="filt-COMPLETED">📄 Completados</button>
       <button class="poc-refresh-btn" onclick="loadPOCCases()">↻ Actualizar</button>
     </div>
 
@@ -1264,7 +1272,7 @@ body {
 // Fill in these values after completing Build 2 deployment.
 // ═══════════════════════════════════════════════════════════════
 const GAS_CONFIG = {
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyus2A8To8XqjGsZYOdt4rOLD1RjyLUU1l_H5RQIxaMQCgoXpI46a-yBEqwwHiLUyKb/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxfNJHNNIS2tju4LalljZFv4dvlgsqk0A3ZO6keG_xfS3PHD63ExZTLTx0pPCYksDtw/exec', 
   SECRET_TOKEN:    'MC-Consulate-2026-AlbuqNM-X9k2',
   APP_VERSION:     '2.0',
 };
@@ -2523,7 +2531,23 @@ async function loadCase(caseId, editMode) {
       return;
     }
 
+    // For NEEDS_STAFF_REVIEW: populate form + show pre-registration banner
     populateFormFromCase(result, editMode);
+    if (result.status === 'NEEDS_STAFF_REVIEW') {
+      const banner   = document.getElementById('editModeBanner');
+      const notesEl  = document.getElementById('pocNotesText');
+      const caseIdEl = document.getElementById('editCaseIdLabel');
+      if (banner)  banner.className = 'edit-mode-banner show';
+      if (notesEl) notesEl.innerHTML =
+        '<strong>📋 Pre-registro enviado por la familia.</strong><br>' +
+        'Complete los campos del acta de nacimiento desde el documento físico ' +
+        '(hospital, número de acta, médico, certificador). ' +
+        'Luego haga clic en "Enviar al Sistema" para que el POC lo revise.';
+      if (caseIdEl) caseIdEl.textContent = 'Caso ID: ' + result.caseId + ' · Pre-registro familiar';
+      // Update submit button label
+      const submitBtn = document.getElementById('submitBtn');
+      if (submitBtn) submitBtn.textContent = '↑ Completar y Enviar al POC';
+    }
 
   } catch (err) {
     if (loadBanner) loadBanner.className = 'loading-banner';
@@ -2886,7 +2910,7 @@ async function loadPOCCases() {
 
 // ── Render stats cards ────────────────────────────────────────
 function _renderPOCStats() {
-  const counts = {ALL:0, PENDING:0, APPROVED:0, REJECTED:0, NEEDS_EDIT:0, COMPLETED:0};
+  const counts = {ALL:0, PENDING:0, APPROVED:0, REJECTED:0, NEEDS_EDIT:0, COMPLETED:0, NEEDS_STAFF_REVIEW:0};
   counts.ALL = _pocAllCases.length;
   _pocAllCases.forEach(c => { if (counts[c.status] !== undefined) counts[c.status]++; });
   Object.entries(counts).forEach(([k,v]) => {
@@ -2939,7 +2963,13 @@ function _renderPOCTable(filter) {
 
     // Action buttons depend on status
     let actionBtns = '';
-    if (c.status === 'PENDING') {
+    if (c.status === 'NEEDS_STAFF_REVIEW') {
+      actionBtns = `
+        <span style="font-size:10px; color:#be185d; font-weight:600; display:block; margin-bottom:4px;">
+          📋 Requiere revisión del personal antes de enviar al POC
+        </span>
+      `;
+    } else if (c.status === 'PENDING') {
       actionBtns = `
         <button class="pac pac-approve" onclick="openPOCModal('${c.caseId}','APPROVED')">✓ Aprobar</button>
         <button class="pac pac-reject"  onclick="openPOCModal('${c.caseId}','REJECTED')">✗ Rechazar</button>
@@ -3092,8 +3122,11 @@ function _fmtDate(iso) {
   } catch(e) { return iso; }
 }
 function _fmtStatus(s) {
-  const m = {PENDING:'Pendiente', APPROVED:'Aprobado', REJECTED:'Rechazado',
-             NEEDS_EDIT:'Necesita Corrección', COMPLETED:'Completado'};
+  const m = {
+    PENDING:'Pendiente', APPROVED:'Aprobado', REJECTED:'Rechazado',
+    NEEDS_EDIT:'Necesita Corrección', COMPLETED:'Completado',
+    NEEDS_STAFF_REVIEW:'Pre-Registro Familiar',
+  };
   return m[s] || s;
 }
 
