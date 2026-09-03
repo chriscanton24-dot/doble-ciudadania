@@ -3322,10 +3322,6 @@ function _drawTraduccionP1(page, d, F) {
 
   _box(page, 25, 25, 562, 758, 1.0);
 
-  page.drawText('TRADUCCIÓN FIEL DEL ACTA DE NACIMIENTO',
-    {x:0, y:764, size:13.2, font:F.hb, color:BLACK,
-     maxWidth:612, lineHeight:13.2});
-  // Centered manually
   const titleW = F.hb.widthOfTextAtSize('TRADUCCIÓN FIEL DEL ACTA DE NACIMIENTO', 13.2);
   page.drawText('TRADUCCIÓN FIEL DEL ACTA DE NACIMIENTO',
     {x: (612 - titleW) / 2, y:764, size:13.2, font:F.hb, color:BLACK});
